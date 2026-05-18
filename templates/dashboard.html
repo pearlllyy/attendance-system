@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Attendance System</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/script.js" defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: #0f172a;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 32px 24px;
+            color: #f1f5f9;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 2px;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #0ea5e9;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0284c7;
+        }
+
+        /* Stats Row */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-card .label {
+            color: #64748b;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        .value.present { color: #22c55e; }
+        .value.late    { color: #f59e0b; }
+        .value.total   { color: #0ea5e9; }
+
+        /* Filters */
+        .filters {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .filter-group label {
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 9px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            border-color: #0ea5e9;
+        }
+
+        /* Table */
+        .table-wrapper {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #0f172a;
+        }
+
+        thead th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+        }
+
+        tbody tr {
+            border-top: 1px solid #1e293b;
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover {
+            background: #263347;
+        }
+
+        tbody td {
+            padding: 14px 16px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-present {
+            background: #052e16;
+            color: #22c55e;
+            border: 1px solid #16a34a;
+        }
+
+        .badge-late {
+            background: #1c1009;
+            color: #f59e0b;
+            border: 1px solid #d97706;
+        }
+
+        .badge-course {
+            background: #0c1a2e;
+            color: #0ea5e9;
+            border: 1px solid #0369a1;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 48px;
+            color: #475569;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>Attendance Dashboard</h1>
+            <p>Real-time attendance records across all stations</p>
+        </div>
+        <a href="/reports" class="btn btn-primary">Export Reports</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="label">Total Scans</div>
+            <div class="value total">{{ logs | length }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Present</div>
+            <div class="value present">
+                {{ logs | selectattr('status', 'equalto', 'Present') | list | length }}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Late</div>
+            <div class="value late">
+                {{ logs | selectattr('status', 'equalto', 'Late') | list | length }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <div class="filter-group">
+            <label>Search Name / ID</label>
+            <input type="text" id="search" placeholder="e.g. Juan or 2023-0001" oninput="filterTable()">
+        </div>
+        <div class="filter-group">
+            <label>Course</label>
+            <select id="filterCourse" onchange="filterTable()">
+                <option value="">All Courses</option>
+                {% for log in logs %}
+                    <option value="{{ log.course_code }}">{{ log.course_code }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Status</label>
+            <select id="filterStatus" onchange="filterTable()">
+                <option value="">All</option>
+                <option value="Present">Present</option>
+                <option value="Late">Late</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Date</label>
+            <input type="date" id="filterDate" onchange="filterTable()">
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+        <table id="attendanceTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Student ID</th>
+                    <th>Full Name</th>
+                    <th>Course</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                {% if logs %}
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ log.student_id }}</td>
+                        <td>{{ log.full_name }}</td>
+                        <td><span class="badge badge-course">{{ log.course_code }}</span></td>
+                        <td>{{ log.scan_date }}</td>
+                        <td>{{ log.scan_time }}</td>
+                        <td>
+                            <span class="badge badge-{{ log.status | lower }}">
+                                {{ log.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="empty">No attendance records yet.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function filterTable() {
+            const search = document.getElementById('search').value.toLowerCase();
+            const course = document.getElementById('filterCourse').value.toLowerCase();
+            const status = document.getElementById('filterStatus').value.toLowerCase();
+            const date   = document.getElementById('filterDate').value;
+
+            const rows = document.querySelectorAll('#tableBody tr');
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 7) return;
+
+                const studentId   = cells[1].textContent.toLowerCase();
+                const name        = cells[2].textContent.toLowerCase();
+                const rowCourse   = cells[3].textContent.toLowerCase().trim();
+                const rowDate     = cells[4].textContent.trim();
+                const rowStatus   = cells[6].textContent.toLowerCase().trim();
+
+                const matchSearch = studentId.includes(search) || name.includes(search);
+                const matchCourse = course === '' || rowCourse.includes(course);
+                const matchStatus = status === '' || rowStatus.includes(status);
+                const matchDate   = date === '' || rowDate === date;
+
+                row.style.display = (matchSearch && matchCourse && matchStatus && matchDate)
+                    ? '' : 'none';
+            });
+        }
+    </script>
+
+</body>
+</html>
