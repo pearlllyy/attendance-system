@@ -293,6 +293,15 @@
                 <label>Date To</label>
                 <input type="date" id="dateTo">
             </div>
+            <div class="filter-group">
+                <label>Section</label>
+                <select id="filterSection">
+                    <option value="">All Sections</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                </select>
+            </div>
         </div>
         <div class="filter-actions">
             <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
@@ -364,20 +373,21 @@
     <script>
         // Apply filters — calls backend with selected filters
         async function applyFilters() {
-            const course = document.getElementById('filterCourse').value;
-            const status = document.getElementById('filterStatus').value;
-            const from   = document.getElementById('dateFrom').value;
-            const to     = document.getElementById('dateTo').value;
+            const course   = document.getElementById('filterCourse').value;
+            const status   = document.getElementById('filterStatus').value;
+            const from     = document.getElementById('dateFrom').value;
+            const to       = document.getElementById('dateTo').value;
+            const section  = document.getElementById('filterSection').value;
 
             const params = new URLSearchParams();
-            if (course) params.append('course_id', course);
-            if (status) params.append('status', status);
-            if (from)   params.append('date_from', from);
-            if (to)     params.append('date_to', to);
+            if (course)   params.append('course_id', course);
+            if (status)   params.append('status', status);
+            if (from)     params.append('date_from', from);
+            if (to)       params.append('date_to', to);
+            if (section)  params.append('section', section);
 
             const res  = await fetch(`/api/reports?${params.toString()}`);
             const data = await res.json();
-
             renderTable(data);
             updateCounts(data);
         }
@@ -395,6 +405,7 @@
                     <td>${i + 1}</td>
                     <td>${log.student_id}</td>
                     <td>${log.full_name}</td>
+                    <td>${log.section}</td>
                     <td><span class="badge badge-course">${log.course_code}</span></td>
                     <td>${log.scan_date}</td>
                     <td>${log.scan_time}</td>

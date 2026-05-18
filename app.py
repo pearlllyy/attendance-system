@@ -132,8 +132,8 @@ def dashboard():
     db = get_db()
     cursor = db.cursor()
     cursor.execute("""
-        SELECT a.log_id, s.full_name, s.student_id, c.course_code,
-               a.scan_date, a.scan_time, a.status
+        SELECT a.log_id, s.full_name, s.student_id, s.section,
+            c.course_code, a.scan_date, a.scan_time, a.status
         FROM attendance_logs a
         JOIN students s ON a.student_id = s.student_id
         JOIN courses c ON s.course_id = c.course_id
@@ -162,8 +162,8 @@ def reports():
     cursor.execute("SELECT * FROM courses")
     courses = cursor.fetchall()
     cursor.execute("""
-        SELECT a.log_id, s.full_name, s.student_id, c.course_code,
-               a.scan_date, a.scan_time, a.status
+        SELECT a.log_id, s.full_name, s.student_id, s.section,
+            c.course_code, a.scan_date, a.scan_time, a.status
         FROM attendance_logs a
         JOIN students s ON a.student_id = s.student_id
         JOIN courses c ON s.course_id = c.course_id
@@ -181,9 +181,10 @@ def reports_api():
     status     = request.args.get('status')
     date_from  = request.args.get('date_from')
     date_to    = request.args.get('date_to')
+    section = request.args.get('section')
 
     query  = """
-        SELECT a.log_id, s.full_name, s.student_id, c.course_code,
+        SELECT a.log_id, s.full_name, s.student_id, s.section, c.course_code,
                DATE_FORMAT(a.scan_date, '%Y-%m-%d') as scan_date,
                TIME_FORMAT(a.scan_time, '%H:%i:%s') as scan_time, a.status
         FROM attendance_logs a
@@ -205,6 +206,9 @@ def reports_api():
     if date_to:
         query += " AND a.scan_date <= %s"
         params.append(date_to)
+    if section:
+        query += " AND s.section = %s"
+        params.append(section)
 
     query += " ORDER BY a.scan_date DESC, a.scan_time DESC"
 
