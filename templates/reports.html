@@ -302,6 +302,16 @@
                     <option value="C">C</option>
                 </select>
             </div>
+            <div class="filter-group">
+                <label>Year Level</label>
+                <select id="filterYear">
+                    <option value="">All Years</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                </select>
+            </div>
         </div>
         <div class="filter-actions">
             <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
@@ -378,6 +388,7 @@
             const from     = document.getElementById('dateFrom').value;
             const to       = document.getElementById('dateTo').value;
             const section  = document.getElementById('filterSection').value;
+            const year = document.getElementById('filterYear').value;
 
             const params = new URLSearchParams();
             if (course)   params.append('course_id', course);
@@ -385,6 +396,7 @@
             if (from)     params.append('date_from', from);
             if (to)       params.append('date_to', to);
             if (section)  params.append('section', section);
+            if (year) params.append('year_level', year);
 
             const res  = await fetch(`/api/reports?${params.toString()}`);
             const data = await res.json();

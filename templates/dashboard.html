@@ -276,15 +276,25 @@
             <label>Date</label>
             <input type="date" id="filterDate" onchange="filterTable()">
         </div>
-    <div class="filter-group">
-        <label>Section</label>
-        <select id="filterSection" onchange="filterTable()">
-            <option value="">All Sections</option>
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
-        </select>
-    </div>
+        <div class="filter-group">
+            <label>Section</label>
+            <select id="filterSection" onchange="filterTable()">
+                <option value="">All Sections</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Year Level</label>
+            <select id="filterYear" onchange="filterTable()">
+                <option value="">All Years</option>
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+            </select>
+        </div>
     </div>
 
     <!-- Table -->
@@ -295,6 +305,7 @@
                     <th>#</th>
                     <th>Student ID</th>
                     <th>Full Name</th>
+                    <th>Year</th>
                     <th>Section</th>
                     <th>Course</th>
                     <th>Date</th>
@@ -310,6 +321,7 @@
                         <td>{{ log.student_id }}</td>
                         <td>{{ log.full_name }}</td>
                         <td>{{ log.section }}</td>
+                        <td>{{ log.year_level }}</td>
                         <td><span class="badge badge-course">{{ log.course_code }}</span></td>
                         <td>{{ log.scan_date }}</td>
                         <td>{{ log.scan_time }}</td>
@@ -336,27 +348,31 @@
             const status  = document.getElementById('filterStatus').value.toLowerCase();
             const date    = document.getElementById('filterDate').value;
             const section = document.getElementById('filterSection').value.toLowerCase();
+            const year    = document.getElementById('filterYear').value;
 
             const rows = document.querySelectorAll('#tableBody tr');
 
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length < 8) return;
+                if (cells.length < 9) return;
 
+                // Column order: # | StudentID | Name | Section | Year | Course | Date | Time | Status
                 const studentId  = cells[1].textContent.toLowerCase();
                 const name       = cells[2].textContent.toLowerCase();
                 const rowSection = cells[3].textContent.toLowerCase().trim();
-                const rowCourse  = cells[4].textContent.toLowerCase().trim();
-                const rowDate    = cells[5].textContent.trim();
-                const rowStatus  = cells[7].textContent.toLowerCase().trim();
+                const rowYear    = cells[4].textContent.trim();
+                const rowCourse  = cells[5].textContent.toLowerCase().trim();
+                const rowDate    = cells[6].textContent.trim();
+                const rowStatus  = cells[8].textContent.toLowerCase().trim();
 
                 const matchSearch  = studentId.includes(search) || name.includes(search);
                 const matchCourse  = course === '' || rowCourse.includes(course);
                 const matchStatus  = status === '' || rowStatus.includes(status);
                 const matchDate    = date === '' || rowDate === date;
-                const matchSection = section === '' || rowSection.includes(section);
+                const matchSection = section === '' || rowSection === section.toUpperCase();
+                const matchYear    = year === '' || rowYear === year;
 
-                row.style.display = (matchSearch && matchCourse && matchStatus && matchDate && matchSection)
+                row.style.display = (matchSearch && matchCourse && matchStatus && matchDate && matchSection && matchYear)
                     ? '' : 'none';
             });
         }
