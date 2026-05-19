@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events — Attendance System</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: #0f172a;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 32px 24px;
+            color: #f1f5f9;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 2px;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary  { background: #0ea5e9; color: white; }
+        .btn-primary:hover  { background: #0284c7; }
+        .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+        .btn-secondary:hover { background: #263347; }
+        .btn-success  { background: #16a34a; color: white; }
+        .btn-success:hover  { background: #15803d; }
+        .btn-danger   { background: #dc2626; color: white; }
+        .btn-danger:hover   { background: #b91c1c; }
+        .btn-warning  { background: #d97706; color: white; }
+        .btn-warning:hover  { background: #b45309; }
+
+        /* Create Event Form */
+        .form-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+
+        .form-card h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 9px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #0ea5e9;
+        }
+
+        /* Events Table */
+        .table-wrapper {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #0f172a;
+        }
+
+        thead th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+        }
+
+        tbody tr {
+            border-top: 1px solid #0f172a;
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover {
+            background: #263347;
+        }
+
+        tbody td {
+            padding: 14px 16px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-active {
+            background: #052e16;
+            color: #22c55e;
+            border: 1px solid #16a34a;
+        }
+
+        .badge-inactive {
+            background: #1e293b;
+            color: #64748b;
+            border: 1px solid #334155;
+        }
+
+        .badge-all {
+            background: #0c1a2e;
+            color: #0ea5e9;
+            border: 1px solid #0369a1;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .actions .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 48px;
+            color: #475569;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>Event Management</h1>
+            <p>Create and manage attendance events</p>
+        </div>
+        <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    <!-- Create Event Form -->
+    <div class="form-card">
+        <h2>Create New Event</h2>
+        <div class="form-grid">
+            <div class="form-group" style="grid-column: span 2;">
+                <label>Event Name</label>
+                <input type="text" id="eventName" placeholder="e.g. Foundation Day">
+            </div>
+            <div class="form-group">
+                <label>Event Date</label>
+                <input type="date" id="eventDate">
+            </div>
+            <div class="form-group">
+                <label>Time In Cutoff</label>
+                <input type="time" id="timeInCutoff">
+            </div>
+            <div class="form-group">
+                <label>Time Out Start</label>
+                <input type="time" id="timeOutStart">
+            </div>
+            <div class="form-group">
+                <label>Course (optional)</label>
+                <select id="eventCourse">
+                    <option value="">All Courses</option>
+                    {% for course in courses %}
+                        <option value="{{ course.course_id }}">{{ course.course_code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="createNewEvent()">Create Event</button>
+    </div>
+
+    <!-- Events List -->
+    <div class="table-wrapper">
+        <div class="table-header">
+            <h2>All Events</h2>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Event Name</th>
+                    <th>Date</th>
+                    <th>Time In Cutoff</th>
+                    <th>Time Out Start</th>
+                    <th>Course</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="eventsBody">
+                {% if events %}
+                    {% for event in events %}
+                    <tr>
+                        <td>{{ event.event_name }}</td>
+                        <td>{{ event.event_date }}</td>
+                        <td>{{ event.time_in_cutoff }}</td>
+                        <td>{{ event.time_out_start }}</td>
+                        <td>
+                            {% if event.course_code %}
+                                <span class="badge badge-all">{{ event.course_code }}</span>
+                            {% else %}
+                                <span class="badge badge-all">All Courses</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if event.is_active %}
+                                <span class="badge badge-active">Active</span>
+                            {% else %}
+                                <span class="badge badge-inactive">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="actions">
+                                {% if event.is_active %}
+                                    <button class="btn btn-warning"
+                                        onclick="deactivateEvent()">
+                                        Deactivate
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-success"
+                                        onclick="activateEvent({{ event.event_id }})">
+                                        Activate
+                                    </button>
+                                {% endif %}
+                                <button class="btn btn-danger"
+                                    onclick="deleteEvent({{ event.event_id }}, '{{ event.event_name }}')">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="empty">No events yet. Create one above.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <script src="/static/script.js" defer></script>
+    <script>
+        async function createNewEvent() {
+            const name       = document.getElementById('eventName').value.trim();
+            const date       = document.getElementById('eventDate').value;
+            const cutoff     = document.getElementById('timeInCutoff').value;
+            const timeOut    = document.getElementById('timeOutStart').value;
+            const course     = document.getElementById('eventCourse').value;
+
+            if (!name || !date || !cutoff || !timeOut) {
+                showToast('Please fill in all required fields.', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/events/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event_name:     name,
+                    event_date:     date,
+                    time_in_cutoff: cutoff,
+                    time_out_start: timeOut,
+                    course_id:      course || null
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('Event created successfully!', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+
+        async function activateEvent(eventId) {
+            const res = await fetch('/api/events/activate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event_id: eventId })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('Event activated! Scanners are now live.', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+
+        async function deactivateEvent() {
+            const res = await fetch('/api/events/deactivate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('Event deactivated.', 'info');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+        async function deleteEvent(eventId, eventName) {
+            const ok = await confirmDialog(
+                `Delete "${eventName}"? This will also delete all attendance logs for this event.`
+            );
+            if (!ok) return;
+
+            const res = await fetch('/api/events/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event_id: eventId })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('Event deleted successfully.', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

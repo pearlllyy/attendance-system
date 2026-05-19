@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports — Attendance System</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="/static/script.js" defer></script>
     <style>
         * {
             margin: 0;
@@ -53,33 +52,12 @@
             display: inline-block;
         }
 
-        .btn-secondary {
-            background: #1e293b;
-            color: #94a3b8;
-            border: 1px solid #334155;
-        }
-
-        .btn-secondary:hover {
-            background: #263347;
-        }
-
-        .btn-primary {
-            background: #0ea5e9;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #0284c7;
-        }
-
-        .btn-success {
-            background: #16a34a;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #15803d;
-        }
+        .btn-primary   { background: #0ea5e9; color: white; }
+        .btn-primary:hover   { background: #0284c7; }
+        .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+        .btn-secondary:hover { background: #263347; }
+        .btn-success   { background: #16a34a; color: white; }
+        .btn-success:hover   { background: #15803d; }
 
         /* Filter Card */
         .filter-card {
@@ -120,8 +98,7 @@
             letter-spacing: 0.8px;
         }
 
-        .filter-group select,
-        .filter-group input {
+        .filter-group select {
             padding: 9px 12px;
             background: #0f172a;
             border: 1px solid #334155;
@@ -132,8 +109,7 @@
             transition: border-color 0.2s;
         }
 
-        .filter-group select:focus,
-        .filter-group input:focus {
+        .filter-group select:focus {
             border-color: #0ea5e9;
         }
 
@@ -143,7 +119,7 @@
             flex-wrap: wrap;
         }
 
-        /* Summary Cards */
+        /* Summary */
         .summary {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -189,9 +165,7 @@
             border-collapse: collapse;
         }
 
-        thead {
-            background: #0f172a;
-        }
+        thead { background: #0f172a; }
 
         thead th {
             padding: 14px 16px;
@@ -208,9 +182,7 @@
             transition: background 0.15s;
         }
 
-        tbody tr:hover {
-            background: #263347;
-        }
+        tbody tr:hover { background: #263347; }
 
         tbody td {
             padding: 14px 16px;
@@ -259,7 +231,7 @@
     <div class="header">
         <div>
             <h1>Attendance Reports</h1>
-            <p>Filter and export attendance data by course, date, or status</p>
+            <p>Filter and export attendance data by event, course, or status</p>
         </div>
         <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
     </div>
@@ -269,29 +241,26 @@
         <h2>Filter Records</h2>
         <div class="filter-grid">
             <div class="filter-group">
-                <label>Course</label>
-                <select id="filterCourse">
-                    <option value="">All Courses</option>
-                    {% for course in courses %}
-                        <option value="{{ course.course_id }}">{{ course.course_code }}</option>
+                <label>Event</label>
+                <select id="filterEvent">
+                    <option value="">All Events</option>
+                    {% for event in events %}
+                        <option value="{{ event.event_id }}">
+                            {{ event.event_name }} ({{ event.event_date }})
+                        </option>
                     {% endfor %}
                 </select>
             </div>
             <div class="filter-group">
-                <label>Status</label>
-                <select id="filterStatus">
-                    <option value="">All</option>
-                    <option value="Present">Present</option>
-                    <option value="Late">Late</option>
+                <label>Course</label>
+                <select id="filterCourse">
+                    <option value="">All Courses</option>
+                    {% for course in courses %}
+                        <option value="{{ course.course_id }}">
+                            {{ course.course_code }}
+                        </option>
+                    {% endfor %}
                 </select>
-            </div>
-            <div class="filter-group">
-                <label>Date From</label>
-                <input type="date" id="dateFrom">
-            </div>
-            <div class="filter-group">
-                <label>Date To</label>
-                <input type="date" id="dateTo">
             </div>
             <div class="filter-group">
                 <label>Section</label>
@@ -300,6 +269,7 @@
                     <option value="A">A</option>
                     <option value="B">B</option>
                     <option value="C">C</option>
+                    <option value="D">D</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -312,11 +282,25 @@
                     <option value="4">4th Year</option>
                 </select>
             </div>
+            <div class="filter-group">
+                <label>Status</label>
+                <select id="filterStatus">
+                    <option value="">All</option>
+                    <option value="Present">Present</option>
+                    <option value="Late">Late</option>
+                </select>
+            </div>
         </div>
         <div class="filter-actions">
-            <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
-            <button class="btn btn-success" onclick="exportCSV()">Export CSV</button>
-            <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+            <button class="btn btn-primary" onclick="applyFilters()">
+                Apply Filters
+            </button>
+            <button class="btn btn-success" onclick="exportCSV()">
+                Export CSV
+            </button>
+            <button class="btn btn-secondary" onclick="resetFilters()">
+                Reset
+            </button>
         </div>
     </div>
 
@@ -324,7 +308,9 @@
     <div class="summary">
         <div class="summary-card">
             <div class="label">Total Records</div>
-            <div class="value total" id="totalCount">{{ logs | length }}</div>
+            <div class="value total" id="totalCount">
+                {{ logs | length }}
+            </div>
         </div>
         <div class="summary-card">
             <div class="label">Present</div>
@@ -349,8 +335,11 @@
                     <th>Student ID</th>
                     <th>Full Name</th>
                     <th>Course</th>
-                    <th>Date</th>
-                    <th>Time</th>
+                    <th>Year</th>
+                    <th>Section</th>
+                    <th>Event</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -361,9 +350,16 @@
                         <td>{{ loop.index }}</td>
                         <td>{{ log.student_id }}</td>
                         <td>{{ log.full_name }}</td>
-                        <td><span class="badge badge-course">{{ log.course_code }}</span></td>
-                        <td>{{ log.scan_date }}</td>
-                        <td>{{ log.scan_time }}</td>
+                        <td>
+                            <span class="badge badge-course">
+                                {{ log.course_code }}
+                            </span>
+                        </td>
+                        <td>{{ log.year_level }}</td>
+                        <td>{{ log.section }}</td>
+                        <td>{{ log.event_name }}</td>
+                        <td>{{ log.time_in }}</td>
+                        <td>{{ log.time_out if log.time_out else '—' }}</td>
                         <td>
                             <span class="badge badge-{{ log.status | lower }}">
                                 {{ log.status }}
@@ -373,42 +369,44 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="7" class="empty">No records found.</td>
+                        <td colspan="10" class="empty">No records found.</td>
                     </tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
 
+    <script src="/static/script.js" defer></script>
     <script>
-        // Apply filters — calls backend with selected filters
         async function applyFilters() {
+            const event    = document.getElementById('filterEvent').value;
             const course   = document.getElementById('filterCourse').value;
-            const status   = document.getElementById('filterStatus').value;
-            const from     = document.getElementById('dateFrom').value;
-            const to       = document.getElementById('dateTo').value;
             const section  = document.getElementById('filterSection').value;
-            const year = document.getElementById('filterYear').value;
+            const year     = document.getElementById('filterYear').value;
+            const status   = document.getElementById('filterStatus').value;
 
             const params = new URLSearchParams();
-            if (course)   params.append('course_id', course);
-            if (status)   params.append('status', status);
-            if (from)     params.append('date_from', from);
-            if (to)       params.append('date_to', to);
-            if (section)  params.append('section', section);
-            if (year) params.append('year_level', year);
+            if (event)   params.append('event_id', event);
+            if (course)  params.append('course_id', course);
+            if (section) params.append('section', section);
+            if (year)    params.append('year_level', year);
+            if (status)  params.append('status', status);
 
             const res  = await fetch(`/api/reports?${params.toString()}`);
             const data = await res.json();
+
             renderTable(data);
             updateCounts(data);
         }
 
-        // Render filtered results into table
         function renderTable(logs) {
             const body = document.getElementById('reportBody');
+
             if (logs.length === 0) {
-                body.innerHTML = `<tr><td colspan="7" class="empty">No records found.</td></tr>`;
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="empty">No records found.</td>
+                    </tr>`;
                 return;
             }
 
@@ -417,39 +415,58 @@
                     <td>${i + 1}</td>
                     <td>${log.student_id}</td>
                     <td>${log.full_name}</td>
+                    <td>
+                        <span class="badge badge-course">
+                            ${log.course_code}
+                        </span>
+                    </td>
+                    <td>${log.year_level}</td>
                     <td>${log.section}</td>
-                    <td><span class="badge badge-course">${log.course_code}</span></td>
-                    <td>${log.scan_date}</td>
-                    <td>${log.scan_time}</td>
-                    <td><span class="badge badge-${log.status.toLowerCase()}">${log.status}</span></td>
+                    <td>${log.event_name}</td>
+                    <td>${log.time_in || '—'}</td>
+                    <td>${log.time_out || '—'}</td>
+                    <td>
+                        <span class="badge badge-${log.status.toLowerCase()}">
+                            ${log.status}
+                        </span>
+                    </td>
                 </tr>
             `).join('');
         }
 
-        // Update summary counts
         function updateCounts(logs) {
-            document.getElementById('totalCount').textContent   = logs.length;
-            document.getElementById('presentCount').textContent = logs.filter(l => l.status === 'Present').length;
-            document.getElementById('lateCount').textContent    = logs.filter(l => l.status === 'Late').length;
+            document.getElementById('totalCount').textContent =
+                logs.length;
+            document.getElementById('presentCount').textContent =
+                logs.filter(l => l.status === 'Present').length;
+            document.getElementById('lateCount').textContent =
+                logs.filter(l => l.status === 'Late').length;
         }
 
-        // Export visible table rows as CSV
         function exportCSV() {
             const rows   = document.querySelectorAll('#reportBody tr');
-            const header = 'Student ID,Full Name,Course,Date,Time,Status\n';
+            const header = 'Student ID,Full Name,Course,Year,Section,Event,Time In,Time Out,Status\n';
 
             const csv = Array.from(rows).map(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length < 7) return null;
+                if (cells.length < 10) return null;
                 return [
                     cells[1].textContent.trim(),
                     cells[2].textContent.trim(),
                     cells[3].textContent.trim(),
                     cells[4].textContent.trim(),
                     cells[5].textContent.trim(),
-                    cells[6].textContent.trim()
+                    cells[6].textContent.trim(),
+                    cells[7].textContent.trim(),
+                    cells[8].textContent.trim(),
+                    cells[9].textContent.trim()
                 ].join(',');
             }).filter(Boolean).join('\n');
+
+            if (!csv) {
+                showToast('No data to export.', 'error');
+                return;
+            }
 
             const blob = new Blob([header + csv], { type: 'text/csv' });
             const url  = URL.createObjectURL(blob);
@@ -460,15 +477,14 @@
             URL.revokeObjectURL(url);
         }
 
-        // Reset all filters
         function resetFilters() {
-            document.getElementById('filterCourse').value = '';
-            document.getElementById('filterStatus').value = '';
-            document.getElementById('dateFrom').value     = '';
-            document.getElementById('dateTo').value       = '';
+            document.getElementById('filterEvent').value   = '';
+            document.getElementById('filterCourse').value  = '';
+            document.getElementById('filterSection').value = '';
+            document.getElementById('filterYear').value    = '';
+            document.getElementById('filterStatus').value  = '';
             applyFilters();
         }
     </script>
-
 </body>
 </html>

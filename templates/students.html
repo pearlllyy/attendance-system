@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students — Attendance System</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background-color: #0f172a;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 32px 24px;
+            color: #f1f5f9;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p  { color: #64748b; font-size: 13px; margin-top: 2px; }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary   { background: #0ea5e9; color: white; }
+        .btn-primary:hover   { background: #0284c7; }
+        .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+        .btn-secondary:hover { background: #263347; }
+        .btn-success   { background: #16a34a; color: white; }
+        .btn-success:hover   { background: #15803d; }
+        .btn-danger    { background: #dc2626; color: white; }
+        .btn-danger:hover    { background: #b91c1c; }
+
+        /* Two column layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .card h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 9px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #0ea5e9;
+        }
+
+        /* CSV Upload */
+        .upload-area {
+            border: 2px dashed #334155;
+            border-radius: 10px;
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            margin-bottom: 16px;
+        }
+
+        .upload-area:hover {
+            border-color: #0ea5e9;
+        }
+
+        .upload-area .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .upload-area p {
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .import-result {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .import-result.success { border-color: #16a34a; color: #86efac; }
+        .import-result.error   { border-color: #dc2626; color: #fca5a5; }
+
+        /* CSV Template */
+        .template-hint {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 16px;
+            font-family: monospace;
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .stat-card .label {
+            color: #64748b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 4px;
+            color: #0ea5e9;
+        }
+
+        /* Search */
+        .search-bar {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-bar input,
+        .search-bar select {
+            padding: 8px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+            outline: none;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        /* Table */
+        .table-wrapper {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #0f172a; }
+
+        thead th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+        }
+
+        tbody tr {
+            border-top: 1px solid #0f172a;
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: #263347; }
+
+        tbody td {
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-course {
+            background: #0c1a2e;
+            color: #0ea5e9;
+            border: 1px solid #0369a1;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 48px;
+            color: #475569;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>Student Management</h1>
+            <p>Add, import, and manage student records</p>
+        </div>
+        <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="label">Total Students</div>
+            <div class="value">{{ students | length }}</div>
+        </div>
+        {% for course in courses %}
+        <div class="stat-card">
+            <div class="label">{{ course.course_code }}</div>
+            <div class="value">
+                {{ students | selectattr('course_code', 'equalto', course.course_code) | list | length }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Add Student + CSV Import -->
+    <div class="grid-2">
+
+        <!-- Manual Form -->
+        <div class="card">
+            <h2>Add Student Manually</h2>
+            <div class="form-group">
+                <label>Student ID</label>
+                <input type="text" id="studentId" placeholder="e.g. 2023-0001">
+            </div>
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="fullName" placeholder="e.g. Juan Dela Cruz">
+            </div>
+            <div class="form-group">
+                <label>Course</label>
+                <select id="courseId">
+                    <option value="">— Select Course —</option>
+                    {% for course in courses %}
+                        <option value="{{ course.course_id }}">
+                            {{ course.course_code }} — {{ course.course_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Year Level</label>
+                <select id="yearLevel">
+                    <option value="">— Select Year —</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Section</label>
+                <input type="text" id="section" placeholder="e.g. A"
+                    maxlength="5" style="text-transform: uppercase;">
+            </div>
+            <button class="btn btn-primary" onclick="addStudent()">
+                Add Student
+            </button>
+        </div>
+
+        <!-- CSV Import -->
+        <div class="card">
+            <h2>Import via CSV</h2>
+
+            <p style="color:#64748b; font-size:13px; margin-bottom:12px;">
+                Your CSV file must follow this exact format:
+            </p>
+
+            <div class="template-hint">
+                student_id, full_name, course_id, year_level, section<br>
+                2023-0001, Juan Dela Cruz, 1, 2, A<br>
+                2023-0002, Maria Santos, 1, 2, B
+            </div>
+
+            <div class="form-group">
+                <label>Course ID Reference</label>
+                {% for course in courses %}
+                    <small style="color:#64748b; font-size:12px;">
+                        {{ course.course_id }} = {{ course.course_code }}
+                    </small>
+                {% endfor %}
+            </div>
+
+            <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+                <div class="icon">📂</div>
+                <p>Click to select a CSV file</p>
+                <p id="fileName" style="color:#0ea5e9; margin-top:4px;"></p>
+                <input type="file" id="csvFile" accept=".csv"
+                    onchange="handleFileSelect(this)">
+            </div>
+
+            <button class="btn btn-success" onclick="importCSV()">
+                Import Students
+            </button>
+
+            <div class="import-result" id="importResult"></div>
+        </div>
+
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+        <input type="text" id="search"
+            placeholder="Search by name or student ID..."
+            oninput="filterStudents()">
+        <select id="filterCourse" onchange="filterStudents()">
+            <option value="">All Courses</option>
+            {% for course in courses %}
+                <option value="{{ course.course_code }}">{{ course.course_code }}</option>
+            {% endfor %}
+        </select>
+        <select id="filterYear" onchange="filterStudents()">
+            <option value="">All Years</option>
+            <option value="1">1st Year</option>
+            <option value="2">2nd Year</option>
+            <option value="3">3rd Year</option>
+            <option value="4">4th Year</option>
+        </select>
+        <select id="filterSection" onchange="filterStudents()">
+            <option value="">All Sections</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+        </select>
+    </div>
+
+    <!-- Student Table -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Student ID</th>
+                    <th>Full Name</th>
+                    <th>Course</th>
+                    <th>Year</th>
+                    <th>Section</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="studentBody">
+                {% if students %}
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ student.student_id }}</td>
+                        <td>{{ student.full_name }}</td>
+                        <td>
+                            <span class="badge badge-course">
+                                {{ student.course_code }}
+                            </span>
+                        </td>
+                        <td>{{ student.year_level }}</td>
+                        <td>{{ student.section }}</td>
+                        <td>
+                            <button class="btn btn-danger"
+                                style="padding: 5px 10px; font-size: 12px;"
+                                onclick="deleteStudent('{{ student.student_id }}', '{{ student.full_name }}')">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="empty">
+                            No students yet. Add manually or import via CSV.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <script src="/static/script.js" defer></script>
+    <script>
+        // ── Manual Add ─────────────────────────────────────
+        async function addStudent() {
+            const studentId = document.getElementById('studentId').value.trim();
+            const fullName  = document.getElementById('fullName').value.trim();
+            const courseId  = document.getElementById('courseId').value;
+            const yearLevel = document.getElementById('yearLevel').value;
+            const section   = document.getElementById('section').value.trim();
+
+            if (!studentId || !fullName || !courseId || !yearLevel || !section) {
+                showToast('Please fill in all fields.', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/students/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    full_name:  fullName,
+                    course_id:  courseId,
+                    year_level: yearLevel,
+                    section:    section
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('Student added successfully!', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+
+        // ── CSV Import ─────────────────────────────────────
+        function handleFileSelect(input) {
+            const fileName = input.files[0]?.name || '';
+            document.getElementById('fileName').textContent = fileName;
+        }
+
+        async function importCSV() {
+            const fileInput = document.getElementById('csvFile');
+            const resultBox = document.getElementById('importResult');
+
+            if (!fileInput.files.length) {
+                showToast('Please select a CSV file first.', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const res  = await fetch('/api/students/import', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+            resultBox.style.display = 'block';
+
+            if (data.success) {
+                resultBox.className = 'import-result success';
+                resultBox.innerHTML = `
+                    Import complete!<br>
+                    Inserted: <strong>${data.inserted}</strong> students<br>
+                    Skipped: <strong>${data.skipped}</strong> (duplicates or errors)
+                    ${data.errors.length ? '<br><br>Errors:<br>' + data.errors.join('<br>') : ''}
+                `;
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                resultBox.className = 'import-result error';
+                resultBox.innerHTML = `ERROR: ${data.message}`;
+            }
+        }
+
+        // ── Delete Student ─────────────────────────────────
+        async function deleteStudent(studentId, fullName) {
+            const ok = await confirmDialog(
+                `Delete "${fullName}"? This will also delete all their attendance records.`
+            );
+            if (!ok) return;
+
+            const res = await fetch('/api/students/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_id: studentId })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('Student deleted.', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+
+        // ── Filter Table ───────────────────────────────────
+        function filterStudents() {
+            const search  = document.getElementById('search').value.toLowerCase();
+            const course  = document.getElementById('filterCourse').value.toLowerCase();
+            const year    = document.getElementById('filterYear').value;
+            const section = document.getElementById('filterSection').value.toUpperCase();
+
+            const rows = document.querySelectorAll('#studentBody tr');
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 7) return;
+
+                const studentId  = cells[1].textContent.toLowerCase();
+                const name       = cells[2].textContent.toLowerCase();
+                const rowCourse  = cells[3].textContent.toLowerCase().trim();
+                const rowYear    = cells[4].textContent.trim();
+                const rowSection = cells[5].textContent.trim();
+
+                const matchSearch  = studentId.includes(search) || name.includes(search);
+                const matchCourse  = course === '' || rowCourse.includes(course);
+                const matchYear    = year === '' || rowYear === year;
+                const matchSection = section === '' || rowSection === section;
+
+                row.style.display = (matchSearch && matchCourse && matchYear && matchSection)
+                    ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

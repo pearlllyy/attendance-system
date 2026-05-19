@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scanner — {{ station_name }}</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="/static/script.js" defer></script>
     <style>
         * {
             margin: 0;
@@ -25,7 +24,9 @@
 
         .header {
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 380px;
         }
 
         .station-badge {
@@ -47,10 +48,79 @@
             font-weight: 700;
         }
 
-        .header p {
+        /* Event Info Card */
+        .event-card {
+            width: 100%;
+            max-width: 380px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+
+        .event-card .event-label {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 4px;
+        }
+
+        .event-card .event-name {
+            color: #f1f5f9;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .event-card .event-meta {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 6px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .event-card .event-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Scan Mode Toggle */
+        .mode-toggle {
+            width: 100%;
+            max-width: 380px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: #1e293b;
             color: #64748b;
             font-size: 13px;
-            margin-top: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .mode-btn.active-in {
+            background: #052e16;
+            border-color: #16a34a;
+            color: #22c55e;
+        }
+
+        .mode-btn.active-out {
+            background: #1c1009;
+            border-color: #d97706;
+            color: #f59e0b;
         }
 
         /* Scanner Box */
@@ -60,6 +130,30 @@
             border-radius: 16px;
             overflow: hidden;
             border: 2px solid #334155;
+        }
+
+        /* No Event Warning */
+        .no-event {
+            width: 100%;
+            max-width: 380px;
+            background: #450a0a;
+            border: 1px solid #dc2626;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            color: #fca5a5;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .no-event .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .no-event h3 {
+            color: #fca5a5;
+            margin-bottom: 4px;
         }
 
         /* Result Feedback */
@@ -107,13 +201,8 @@
             margin-top: 4px;
         }
 
-        .result-box.success .detail {
-            color: #86efac;
-        }
-
-        .result-box.error .detail {
-            color: #fca5a5;
-        }
+        .result-box.success .detail { color: #86efac; }
+        .result-box.error .detail   { color: #fca5a5; }
 
         .status-badge {
             display: inline-block;
@@ -126,17 +215,10 @@
             letter-spacing: 0.5px;
         }
 
-        .status-present {
-            background: #16a34a;
-            color: white;
-        }
+        .status-present { background: #16a34a; color: white; }
+        .status-late    { background: #d97706; color: white; }
+        .status-out     { background: #7c3aed; color: white; }
 
-        .status-late {
-            background: #d97706;
-            color: white;
-        }
-
-        /* Logout */
         .logout {
             margin-top: 32px;
             color: #475569;
@@ -145,9 +227,7 @@
             text-decoration: underline;
         }
 
-        .logout:hover {
-            color: #94a3b8;
-        }
+        .logout:hover { color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -155,11 +235,42 @@
     <div class="header">
         <span class="station-badge">{{ station_name }}</span>
         <h1>ID Scanner</h1>
-        <p>Hold student ID in front of camera</p>
     </div>
 
-    <div id="reader"></div>
+    {% if event %}
+        <!-- Active Event Info -->
+        <div class="event-card">
+            <div class="event-label">Active Event</div>
+            <div class="event-name">{{ event.event_name }}</div>
+            <div class="event-meta">
+                <span>Date: {{ event.event_date }}</span>
+                <span>Cutoff: {{ event.time_in_cutoff }}</span>
+            </div>
+        </div>
 
+        <!-- Scan Mode Toggle -->
+        <div class="mode-toggle">
+            <div class="mode-btn active-in" id="btnIn" onclick="setMode('IN')">
+                Time IN
+            </div>
+            <div class="mode-btn" id="btnOut" onclick="setMode('OUT')">
+                Time OUT
+            </div>
+        </div>
+
+        <!-- Scanner -->
+        <div id="reader"></div>
+
+    {% else %}
+        <!-- No Active Event -->
+        <div class="no-event">
+            <div class="icon"></div>
+            <h3>No Active Event</h3>
+            <p>Please ask the admin to activate an event before scanning.</p>
+        </div>
+    {% endif %}
+
+    <!-- Result Feedback -->
     <div class="result-box" id="result">
         <div class="icon" id="result-icon"></div>
         <div class="name" id="result-name"></div>
@@ -170,41 +281,59 @@
     <span class="logout" onclick="logout()">← Change Station</span>
 
     <script src="/static/html5-qrcode.min.js"></script>
+    <script src="/static/script.js" defer></script>
     <script>
         let isProcessing = false;
+        let scanMode = 'IN';    // default mode is Time IN
 
+        {% if event %}
         const html5QrCode = new Html5Qrcode("reader");
 
         html5QrCode.start(
-            { facingMode: "environment" },  // back camera
+            { facingMode: "environment" },
             { fps: 15, qrbox: 250 },
             async (decodedText) => {
-                // Prevent multiple scans firing at once
                 if (isProcessing) return;
                 isProcessing = true;
-
                 await sendScan(decodedText);
-
-                // Wait 3 seconds before allowing next scan
                 setTimeout(() => { isProcessing = false; }, 3000);
             }
         );
+        {% endif %}
+
+        // Set scan mode — IN or OUT
+        function setMode(mode) {
+            scanMode = mode;
+            const btnIn  = document.getElementById('btnIn');
+            const btnOut = document.getElementById('btnOut');
+
+            if (mode === 'IN') {
+                btnIn.className  = 'mode-btn active-in';
+                btnOut.className = 'mode-btn';
+            } else {
+                btnIn.className  = 'mode-btn';
+                btnOut.className = 'mode-btn active-out';
+            }
+        }
 
         async function sendScan(studentId) {
             try {
                 const res = await fetch('/scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ student_id: studentId })
+                    body: JSON.stringify({
+                        student_id: studentId,
+                        scan_mode: scanMode
+                    })
                 });
 
                 const data = await res.json();
                 showResult(data);
 
             } catch (err) {
-                showResult({ 
-                    success: false, 
-                    message: 'Connection lost. Please try again.' 
+                showResult({
+                    success: false,
+                    message: 'Connection lost. Please try again.'
                 });
             }
         }
@@ -220,13 +349,18 @@
 
             if (data.success) {
                 box.classList.add('success');
-                icon.textContent   = '✅';
-                name.textContent   = data.student_name;
-                detail.textContent = `Scanned at ${data.time}`;
-                status.innerHTML   = `<span class="status-badge status-${data.status.toLowerCase()}">${data.status}</span>`;
+                icon.textContent = data.scan_type === 'IN' ? 'IN' : 'OUT';
+                name.textContent = data.student_name;
+                detail.textContent = `Scanned ${data.scan_type} at ${data.time}`;
+
+                if (data.scan_type === 'IN') {
+                    status.innerHTML = `<span class="status-badge status-${data.status.toLowerCase()}">${data.status}</span>`;
+                } else {
+                    status.innerHTML = `<span class="status-badge status-out">Time Out</span>`;
+                }
             } else {
                 box.classList.add('error');
-                icon.textContent   = '❌';
+                icon.textContent   = '';
                 name.textContent   = 'Scan Failed';
                 detail.textContent = data.message;
                 status.innerHTML   = '';
