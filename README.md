@@ -22,3 +22,13 @@ A web-based attendance management system built with Flask and MySQL. Designed fo
 - **Database**: MySQL
 - **Frontend**: HTML, CSS, JavaScript (with Barcode scanner support)
 - **Others**: PyMySQL, Jinja2, XAMPP
+
+## License
+
+**All Rights Reserved** © 2026 Pearl S. & Eui-jin B.
+
+This project and all its source code, documentation, database scripts, and related files are the exclusive property of the copyright owners.
+
+No part of this project may be copied, modified, distributed, sublicensed, or used in any form without the **explicit written permission** of the copyright owners.
+
+For permission requests, please contact the owners directly.
