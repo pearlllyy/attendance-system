@@ -17,6 +17,15 @@ def get_db():
         cursorclass=pymysql.cursors.DictCursor
     )
 
+def td_to_str(td):
+    """Convert MySQL timedelta TIME value to HH:MM:SS string"""
+    if hasattr(td, 'seconds'):  # it's a timedelta
+        total = int(td.total_seconds())
+        h = total // 3600
+        m = (total % 3600) // 60
+        s = total % 60
+        return f'{h:02d}:{m:02d}:{s:02d}'
+    return str(td)
 # ─── Routes ───────────────────────────────────────────────────────
 
 # Homepage — Station Login
@@ -127,7 +136,7 @@ def scan():
                 })
 
             # Check if time out window has started
-            time_out_start = str(event['time_out_start'])
+            time_out_start = td_to_str(event['time_out_start'])
             if current_time < time_out_start:
                 return jsonify({'success': False,
                     'message': f"Time out scanning starts at {event['time_out_start']}"
@@ -151,7 +160,7 @@ def scan():
 
         # ── Time In ────────────────────────────────────────────────
         # Determine status based on cutoff
-        time_in_cutoff = str(event['time_in_cutoff'])
+        time_in_cutoff = td_to_str(event['time_in_cutoff'])
         status = 'Present' if current_time <= time_in_cutoff else 'Late'
 
         cursor.execute("""
