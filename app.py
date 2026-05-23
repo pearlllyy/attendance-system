@@ -142,6 +142,12 @@ def scan():
                     'message': f"Time out scanning starts at {event['time_out_start']}"
                 })
 
+            # Time in is a must before scanning for out
+            if not existing['time_in']:
+                return jsonify({'success': False,
+                    'message': f"{student['full_name']} did not scanned IN yet"
+                })
+
             # Record time out
             cursor.execute("""
                 UPDATE attendance_logs
