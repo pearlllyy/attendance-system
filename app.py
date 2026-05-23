@@ -123,6 +123,12 @@ def scan():
         existing = cursor.fetchone()
 
         # ── Time Out ───────────────────────────────────────────────
+        # Time in is a must before scanning for out
+        if not existing and scan_mode == 'OUT':
+            return jsonify({'success': False,
+                'message': f"{student['full_name']} did not scanned IN yet"
+            })
+
         if existing:
             if scan_mode == 'IN':
                 return jsonify({'success': False,
@@ -140,12 +146,6 @@ def scan():
             if current_time < time_out_start:
                 return jsonify({'success': False,
                     'message': f"Time out scanning starts at {event['time_out_start']}"
-                })
-
-            # Time in is a must before scanning for out
-            if not existing['time_in']:
-                return jsonify({'success': False,
-                    'message': f"{student['full_name']} did not scanned IN yet"
                 })
 
             # Record time out
