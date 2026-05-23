@@ -2,3 +2,4 @@ config.py
 __pycache__/
 *.pyc
 .env
+attendance_db_v2.sql
