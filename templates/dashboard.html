@@ -6,11 +6,7 @@
     <title>Dashboard — Attendance System</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             min-height: 100vh;
@@ -29,22 +25,10 @@
             gap: 12px;
         }
 
-        .header h1 {
-            font-size: 22px;
-            font-weight: 700;
-        }
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p  { color: #64748b; font-size: 13px; margin-top: 2px; }
 
-        .header p {
-            color: #64748b;
-            font-size: 13px;
-            margin-top: 2px;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
+        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
         .btn {
             padding: 10px 18px;
@@ -62,8 +46,9 @@
         .btn-primary:hover   { background: #0284c7; }
         .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
         .btn-secondary:hover { background: #263347; }
+        .btn-danger    { background: #dc2626; color: white; }
+        .btn-danger:hover    { background: #b91c1c; }
 
-        /* Stats */
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -96,7 +81,6 @@
         .value.late    { color: #f59e0b; }
         .value.total   { color: #0ea5e9; }
 
-        /* Filters */
         .filters {
             background: #1e293b;
             border: 1px solid #334155;
@@ -114,7 +98,7 @@
             flex-direction: column;
             gap: 6px;
             flex: 1;
-            min-width: 140px;
+            min-width: 130px;
         }
 
         .filter-group label {
@@ -138,11 +122,8 @@
         }
 
         .filter-group select:focus,
-        .filter-group input:focus {
-            border-color: #0ea5e9;
-        }
+        .filter-group input:focus { border-color: #0ea5e9; }
 
-        /* Table */
         .table-wrapper {
             background: #1e293b;
             border: 1px solid #334155;
@@ -150,11 +131,7 @@
             overflow: hidden;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
+        table { width: 100%; border-collapse: collapse; }
         thead { background: #0f172a; }
 
         thead th {
@@ -191,21 +168,16 @@
         }
 
         .badge-present {
-            background: #052e16;
-            color: #22c55e;
-            border: 1px solid #16a34a;
+            background: #052e16; color: #22c55e; border: 1px solid #16a34a;
         }
-
         .badge-late {
-            background: #1c1009;
-            color: #f59e0b;
-            border: 1px solid #d97706;
+            background: #1c1009; color: #f59e0b; border: 1px solid #d97706;
         }
-
         .badge-course {
-            background: #0c1a2e;
-            color: #0ea5e9;
-            border: 1px solid #0369a1;
+            background: #0c1a2e; color: #0ea5e9; border: 1px solid #0369a1;
+        }
+        .badge-college {
+            background: #1a0c2e; color: #a78bfa; border: 1px solid #7c3aed;
         }
 
         .empty {
@@ -217,19 +189,19 @@
     </style>
 </head>
 <body>
-
-    <div class="header">
+    {% include 'navbar.html' %}
+    <!-- <div class="header">
         <div>
             <h1>Attendance Dashboard</h1>
             <p>Real-time attendance records across all stations</p>
         </div>
         <div class="header-actions">
             <a href="/students" class="btn btn-secondary">Manage Students</a>
-            <a href="/events" class="btn btn-secondary">Manage Events</a>
+            <a href="/events"   class="btn btn-secondary">Manage Events</a>
             <a href="/absences" class="btn btn-secondary">View Absences</a>
-            <a href="/reports" class="btn btn-primary">Export Reports</a>
+            <a href="/reports"  class="btn btn-primary">Export Reports</a>
         </div>
-    </div>
+    </div> -->
 
     <!-- Stats -->
     <div class="stats">
@@ -249,6 +221,14 @@
                 {{ logs | selectattr('status', 'equalto', 'Late') | list | length }}
             </div>
         </div>
+        {% for college in colleges %}
+        <div class="stat-card">
+            <div class="label">{{ college.college_code }}</div>
+            <div class="value total">
+                {{ logs | selectattr('college_code', 'equalto', college.college_code) | list | length }}
+            </div>
+        </div>
+        {% endfor %}
     </div>
 
     <!-- Filters -->
@@ -271,11 +251,13 @@
             </select>
         </div>
         <div class="filter-group">
-            <label>Course</label>
-            <select id="filterCourse" onchange="filterTable()">
-                <option value="">All Courses</option>
-                {% for log in logs %}
-                    <option value="{{ log.course_code }}">{{ log.course_code }}</option>
+            <label>College</label>
+            <select id="filterCollege" onchange="filterTable()">
+                <option value="">All Colleges</option>
+                {% for college in colleges %}
+                    <option value="{{ college.college_code }}">
+                        {{ college.college_code }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
@@ -309,17 +291,19 @@
         </div>
     </div>
 
-    <!-- Table -->
-    <p id="lastUpdated" style="color:#475569; font-size:15px; margin-top:8px;">
+    <p id="lastUpdated" style="color:#475569; font-size:12px; margin-bottom:8px;">
         Last updated: —
     </p>
+
+    <!-- Table -->
     <div class="table-wrapper">
-        <table id="attendanceTable">
+        <table>
             <thead>
                 <tr>
                     <th>#</th>
                     <th>Student ID</th>
                     <th>Full Name</th>
+                    <th>College</th>
                     <th>Course</th>
                     <th>Year</th>
                     <th>Section</th>
@@ -327,7 +311,7 @@
                     <th>Time In</th>
                     <th>Time Out</th>
                     <th>Status</th>
-                    <th>Action</th> 
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -337,6 +321,7 @@
                         <td>{{ loop.index }}</td>
                         <td>{{ log.student_id }}</td>
                         <td>{{ log.full_name }}</td>
+                        <td><span class="badge badge-college">{{ log.college_code }}</span></td>
                         <td><span class="badge badge-course">{{ log.course_code }}</span></td>
                         <td>{{ log.year_level }}</td>
                         <td>{{ log.section }}</td>
@@ -350,7 +335,7 @@
                         </td>
                         <td>
                             <button class="btn btn-danger"
-                                style="padding: 5px 10px; font-size: 12px;"
+                                style="padding:5px 10px; font-size:12px;"
                                 onclick="deleteLog({{ log.log_id }}, '{{ log.full_name }}')">
                                 Delete
                             </button>
@@ -359,9 +344,7 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="11" class="empty">
-                            No attendance records yet.
-                        </td>
+                        <td colspan="12" class="empty">No attendance records yet.</td>
                     </tr>
                 {% endif %}
             </tbody>
@@ -373,74 +356,54 @@
         function filterTable() {
             const search  = document.getElementById('search').value.toLowerCase();
             const event   = document.getElementById('filterEvent').value.toLowerCase();
-            const course  = document.getElementById('filterCourse').value.toLowerCase();
+            const college = document.getElementById('filterCollege').value.toLowerCase();
             const section = document.getElementById('filterSection').value.toUpperCase();
             const year    = document.getElementById('filterYear').value;
             const status  = document.getElementById('filterStatus').value.toLowerCase();
 
-            const rows = document.querySelectorAll('#tableBody tr');
-
-            rows.forEach(row => {
+            document.querySelectorAll('#tableBody tr').forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length < 10) return;
+                if (cells.length < 12) return;
 
-                // # | StudentID | Name | Course | Year | Section | Event | TimeIn | TimeOut | Status
-                const studentId  = cells[1].textContent.toLowerCase();
-                const name       = cells[2].textContent.toLowerCase();
-                const rowCourse  = cells[3].textContent.toLowerCase().trim();
-                const rowYear    = cells[4].textContent.trim();
-                const rowSection = cells[5].textContent.trim();
-                const rowEvent   = cells[6].textContent.toLowerCase().trim();
-                const rowStatus  = cells[9].textContent.toLowerCase().trim();
+                // # | ID | Name | College | Course | Year | Section | Event | TIn | TOut | Status | Action
+                const matchSearch  = cells[1].textContent.toLowerCase().includes(search) ||
+                                     cells[2].textContent.toLowerCase().includes(search);
+                const matchEvent   = event   === '' || cells[7].textContent.toLowerCase().includes(event);
+                const matchCollege = college === '' || cells[3].textContent.toLowerCase().trim().includes(college);
+                const matchSection = section === '' || cells[6].textContent.trim() === section;
+                const matchYear    = year    === '' || cells[5].textContent.trim() === year;
+                const matchStatus  = status  === '' || cells[10].textContent.toLowerCase().trim().includes(status);
 
-                const matchSearch  = studentId.includes(search) || name.includes(search);
-                const matchEvent   = event === '' || rowEvent.includes(event);
-                const matchCourse  = course === '' || rowCourse.includes(course);
-                const matchSection = section === '' || rowSection === section;
-                const matchYear    = year === '' || rowYear === year;
-                const matchStatus  = status === '' || rowStatus.includes(status);
-
-                row.style.display = (
-                    matchSearch && matchEvent && matchCourse &&
-                    matchSection && matchYear && matchStatus
-                ) ? '' : 'none';
+                row.style.display = (matchSearch && matchEvent && matchCollege &&
+                                     matchSection && matchYear && matchStatus) ? '' : 'none';
             });
         }
-        // Auto refresh table every 10 seconds without reloading the page
+
         setInterval(async () => {
             const res  = await fetch('/api/dashboard');
             const data = await res.json();
-            refreshTable(data);
-
-            // Update timestamp
-            const now = new Date();
+            if (data.length) refreshTable(data);
             document.getElementById('lastUpdated').textContent =
-                `Last updated: ${now.toLocaleTimeString()}`;
+                `Last updated: ${new Date().toLocaleTimeString()}`;
         }, 5000);
 
         function refreshTable(logs) {
-            const body = document.getElementById('tableBody');
-            if (!logs.length) return;
-
-            body.innerHTML = logs.map((log, i) => `
+            document.getElementById('tableBody').innerHTML = logs.map((log, i) => `
                 <tr>
                     <td>${i + 1}</td>
                     <td>${log.student_id}</td>
                     <td>${log.full_name}</td>
+                    <td><span class="badge badge-college">${log.college_code}</span></td>
                     <td><span class="badge badge-course">${log.course_code}</span></td>
                     <td>${log.year_level}</td>
                     <td>${log.section}</td>
                     <td>${log.event_name}</td>
                     <td>${log.time_in || '—'}</td>
                     <td>${log.time_out || '—'}</td>
-                    <td>
-                        <span class="badge badge-${log.status.toLowerCase()}">
-                            ${log.status}
-                        </span>
-                    </td>
+                    <td><span class="badge badge-${log.status.toLowerCase()}">${log.status}</span></td>
                     <td>
                         <button class="btn btn-danger"
-                            style="padding: 5px 10px; font-size: 12px;"
+                            style="padding:5px 10px; font-size:12px;"
                             onclick="deleteLog(${log.log_id}, '${log.full_name}')">
                             Delete
                         </button>
@@ -450,24 +413,15 @@
         }
 
         async function deleteLog(logId, studentName) {
-            const ok = await confirmDialog(
-                `Delete attendance record for "${studentName}"?`
-            );
-            if (!ok) return;
-
-            const res = await fetch('/api/logs/delete', {
+            if (!await confirmDialog(`Delete attendance record for "${studentName}"?`)) return;
+            const res  = await fetch('/api/logs/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ log_id: logId })
             });
-
             const data = await res.json();
-            if (data.success) {
-                showToast('Record deleted.', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showToast(data.message, 'error');
-            }
+            data.success ? (showToast('Record deleted.', 'success'), setTimeout(() => location.reload(), 1000))
+                         : showToast(data.message, 'error');
         }
     </script>
 </body>

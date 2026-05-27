@@ -1,7 +1,6 @@
 Set up Xampp, install xampp and run:
     `sudo /opt/lampp/lampp start` to start and `sudo /opt/lampp/lampp stop` to stop
 
-
 Install requirements: 
     `pip install -r requirements.txt`
 

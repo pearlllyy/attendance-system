@@ -278,7 +278,7 @@
     </style>
 </head>
 <body>
-
+    {% include 'navbar.html' %}
     <div class="header">
         <div>
             <h1>Student Management</h1>
@@ -293,11 +293,11 @@
             <div class="label">Total Students</div>
             <div class="value">{{ students | length }}</div>
         </div>
-        {% for course in courses %}
+        {% for college in colleges %}
         <div class="stat-card">
-            <div class="label">{{ course.course_code }}</div>
+            <div class="label">{{ college.college_code }}</div>
             <div class="value">
-                {{ students | selectattr('course_code', 'equalto', course.course_code) | list | length }}
+                {{ students | selectattr('college_code', 'equalto', college.college_code) | list | length }}
             </div>
         </div>
         {% endfor %}
@@ -321,10 +321,14 @@
                 <label>Course</label>
                 <select id="courseId">
                     <option value="">— Select Course —</option>
-                    {% for course in courses %}
-                        <option value="{{ course.course_id }}">
-                            {{ course.course_code }} — {{ course.course_name }}
-                        </option>
+                    {% for college in colleges %}
+                        <optgroup label="{{ college.college_code }} — {{ college.college_name }}">
+                            {% for course in courses if course.college_id == college.college_id %}
+                                <option value="{{ course.course_id }}">
+                                    {{ course.course_code }} — {{ course.course_name }}
+                                </option>
+                            {% endfor %}
+                        </optgroup>
                     {% endfor %}
                 </select>
             </div>
@@ -364,10 +368,15 @@
 
             <div class="form-group">
                 <label>Course ID Reference</label>
-                {% for course in courses %}
-                    <small style="color:#64748b; font-size:12px;">
-                        {{ course.course_id }} = {{ course.course_code }}
+                {% for college in colleges %}
+                    <small style="color:#94a3b8; font-size:12px; font-weight:600; margin-top:6px; display:block;">
+                        {{ college.college_code }}
                     </small>
+                    {% for course in courses if course.college_id == college.college_id %}
+                        <small style="color:#64748b; font-size:12px; display:block; padding-left:8px;">
+                            {{ course.course_id }} = {{ course.course_code }}
+                        </small>
+                    {% endfor %}
                 {% endfor %}
             </div>
 

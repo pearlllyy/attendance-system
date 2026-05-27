@@ -6,12 +6,7 @@
     <title>Absences — Attendance System</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             min-height: 100vh;
             background-color: #0f172a;
@@ -19,7 +14,6 @@
             padding: 32px 24px;
             color: #f1f5f9;
         }
-
         .header {
             display: flex;
             justify-content: space-between;
@@ -28,18 +22,8 @@
             flex-wrap: wrap;
             gap: 12px;
         }
-
-        .header h1 {
-            font-size: 22px;
-            font-weight: 700;
-        }
-
-        .header p {
-            color: #64748b;
-            font-size: 13px;
-            margin-top: 2px;
-        }
-
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p  { color: #64748b; font-size: 13px; margin-top: 2px; }
         .btn {
             padding: 10px 18px;
             border-radius: 8px;
@@ -51,20 +35,12 @@
             text-decoration: none;
             display: inline-block;
         }
-
-        .btn-secondary {
-            background: #1e293b;
-            color: #94a3b8;
-            border: 1px solid #334155;
-        }
-
+        .btn-primary   { background: #0ea5e9; color: white; }
+        .btn-primary:hover   { background: #0284c7; }
+        .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
         .btn-secondary:hover { background: #263347; }
-        .btn-success { background: #16a34a; color: white; }
-        .btn-success:hover { background: #15803d; }
-        .btn-primary { background: #0ea5e9; color: white; }
-        .btn-primary:hover { background: #0284c7; }
-
-        /* Tabs */
+        .btn-success   { background: #16a34a; color: white; }
+        .btn-success:hover   { background: #15803d; }
         .tabs {
             display: flex;
             gap: 4px;
@@ -75,7 +51,6 @@
             margin-bottom: 24px;
             width: fit-content;
         }
-
         .tab {
             padding: 8px 20px;
             border-radius: 7px;
@@ -87,21 +62,9 @@
             border: none;
             background: none;
         }
-
-        .tab.active {
-            background: #0ea5e9;
-            color: white;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Filter Card */
+        .tab.active { background: #0ea5e9; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         .filter-card {
             background: #1e293b;
             border: 1px solid #334155;
@@ -109,7 +72,6 @@
             padding: 24px;
             margin-bottom: 24px;
         }
-
         .filter-card h2 {
             font-size: 14px;
             font-weight: 600;
@@ -118,20 +80,13 @@
             letter-spacing: 0.8px;
             margin-bottom: 20px;
         }
-
         .filter-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 16px;
             margin-bottom: 20px;
         }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
         .filter-group label {
             color: #94a3b8;
             font-size: 11px;
@@ -139,7 +94,6 @@
             text-transform: uppercase;
             letter-spacing: 0.8px;
         }
-
         .filter-group select {
             padding: 9px 12px;
             background: #0f172a;
@@ -150,32 +104,20 @@
             outline: none;
             transition: border-color 0.2s;
         }
-
-        .filter-group select:focus {
-            border-color: #0ea5e9;
-        }
-
-        .filter-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        /* Summary */
+        .filter-group select:focus { border-color: #0ea5e9; }
+        .filter-actions { display: flex; gap: 12px; flex-wrap: wrap; }
         .summary {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 16px;
             margin-bottom: 24px;
         }
-
         .summary-card {
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
             padding: 20px;
         }
-
         .summary-card .label {
             color: #64748b;
             font-size: 12px;
@@ -183,31 +125,17 @@
             letter-spacing: 0.8px;
             font-weight: 600;
         }
-
-        .summary-card .value {
-            font-size: 28px;
-            font-weight: 700;
-            margin-top: 6px;
-        }
-
-        .value.absent  { color: #dc2626; }
-        .value.total   { color: #0ea5e9; }
-
-        /* Table */
+        .summary-card .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+        .value.absent { color: #dc2626; }
+        .value.total  { color: #0ea5e9; }
         .table-wrapper {
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
             overflow: hidden;
         }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
+        table { width: 100%; border-collapse: collapse; }
         thead { background: #0f172a; }
-
         thead th {
             padding: 14px 16px;
             text-align: left;
@@ -217,20 +145,9 @@
             letter-spacing: 0.8px;
             color: #64748b;
         }
-
-        tbody tr {
-            border-top: 1px solid #0f172a;
-            transition: background 0.15s;
-        }
-
+        tbody tr { border-top: 1px solid #0f172a; transition: background 0.15s; }
         tbody tr:hover { background: #263347; }
-
-        tbody td {
-            padding: 14px 16px;
-            font-size: 14px;
-            color: #cbd5e1;
-        }
-
+        tbody td { padding: 14px 16px; font-size: 14px; color: #cbd5e1; }
         .badge {
             display: inline-block;
             padding: 3px 10px;
@@ -240,59 +157,18 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
-        .badge-absent {
-            background: #450a0a;
-            color: #dc2626;
-            border: 1px solid #dc2626;
-        }
-
-        .badge-course {
-            background: #0c1a2e;
-            color: #0ea5e9;
-            border: 1px solid #0369a1;
-        }
-
-        .badge-high {
-            background: #450a0a;
-            color: #dc2626;
-            border: 1px solid #dc2626;
-        }
-
-        .badge-medium {
-            background: #1c1009;
-            color: #f59e0b;
-            border: 1px solid #d97706;
-        }
-
-        .badge-low {
-            background: #052e16;
-            color: #22c55e;
-            border: 1px solid #16a34a;
-        }
-
-        .empty {
-            text-align: center;
-            padding: 48px;
-            color: #475569;
-            font-size: 14px;
-        }
-
-        .hint {
-            text-align: center;
-            padding: 48px;
-            color: #475569;
-            font-size: 14px;
-        }
-
-        .hint .icon {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
+        .badge-absent  { background: #450a0a; color: #dc2626; border: 1px solid #dc2626; }
+        .badge-course  { background: #0c1a2e; color: #0ea5e9; border: 1px solid #0369a1; }
+        .badge-college { background: #1a0c2e; color: #a78bfa; border: 1px solid #7c3aed; }
+        .badge-high    { background: #450a0a; color: #dc2626; border: 1px solid #dc2626; }
+        .badge-medium  { background: #1c1009; color: #f59e0b; border: 1px solid #d97706; }
+        .badge-low     { background: #052e16; color: #22c55e; border: 1px solid #16a34a; }
+        .empty { text-align: center; padding: 48px; color: #475569; font-size: 14px; }
+        .hint  { text-align: center; padding: 48px; color: #475569; font-size: 14px; }
     </style>
 </head>
 <body>
-
+    {% include 'navbar.html' %}
     <div class="header">
         <div>
             <h1>Absence Tracker</h1>
@@ -301,19 +177,13 @@
         <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('perEvent')">
-            Per Event
-        </button>
-        <button class="tab" onclick="switchTab('summary')">
-            Absence Count
-        </button>
+        <button class="tab active" onclick="switchTab('perEvent', this)">Per Event</button>
+        <button class="tab"        onclick="switchTab('summary', this)">Absence Count</button>
     </div>
 
     <!-- ── Tab 1: Per Event ──────────────────────────────── -->
     <div class="tab-content active" id="tab-perEvent">
-
         <div class="filter-card">
             <h2>Filter by Event</h2>
             <div class="filter-grid">
@@ -329,12 +199,23 @@
                     </select>
                 </div>
                 <div class="filter-group">
+                    <label>College</label>
+                    <select id="filterCollege">
+                        <option value="">All Colleges</option>
+                        {% for college in colleges %}
+                            <option value="{{ college.college_id }}">
+                                {{ college.college_code }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
                     <label>Course</label>
                     <select id="filterCourse">
                         <option value="">All Courses</option>
                         {% for course in courses %}
                             <option value="{{ course.course_id }}">
-                                {{ course.course_code }}
+                                [{{ course.college_code }}] {{ course.course_code }}
                             </option>
                         {% endfor %}
                     </select>
@@ -361,12 +242,8 @@
                 </div>
             </div>
             <div class="filter-actions">
-                <button class="btn btn-primary" onclick="loadAbsences()">
-                    Apply Filters
-                </button>
-                <button class="btn btn-success" onclick="exportCSV('perEvent')">
-                    Export CSV
-                </button>
+                <button class="btn btn-primary" onclick="loadAbsences()">Apply Filters</button>
+                <button class="btn btn-success" onclick="exportCSV('perEvent')">Export CSV</button>
             </div>
         </div>
 
@@ -378,7 +255,7 @@
             <div class="summary-card">
                 <div class="label">Event</div>
                 <div class="value total" id="eventLabel"
-                    style="font-size:14px; margin-top:10px;">—</div>
+                    style="font-size:13px; margin-top:10px;">—</div>
             </div>
         </div>
 
@@ -389,6 +266,7 @@
                         <th>#</th>
                         <th>Student ID</th>
                         <th>Full Name</th>
+                        <th>College</th>
                         <th>Course</th>
                         <th>Year</th>
                         <th>Section</th>
@@ -397,30 +275,38 @@
                 </thead>
                 <tbody id="absenceBody">
                     <tr>
-                        <td colspan="7" class="hint">
-                            <div class="icon"></div>
+                        <td colspan="8" class="hint">
                             Select an event and apply filters to see absences.
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-
     </div>
 
     <!-- ── Tab 2: Absence Count ──────────────────────────── -->
     <div class="tab-content" id="tab-summary">
-
         <div class="filter-card">
             <h2>Filter by Student</h2>
             <div class="filter-grid">
+                <div class="filter-group">
+                    <label>College</label>
+                    <select id="summaryCollege">
+                        <option value="">All Colleges</option>
+                        {% for college in colleges %}
+                            <option value="{{ college.college_id }}">
+                                {{ college.college_code }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="filter-group">
                     <label>Course</label>
                     <select id="summaryCourse">
                         <option value="">All Courses</option>
                         {% for course in courses %}
                             <option value="{{ course.course_id }}">
-                                {{ course.course_code }}
+                                [{{ course.college_code }}] {{ course.course_code }}
                             </option>
                         {% endfor %}
                     </select>
@@ -447,12 +333,8 @@
                 </div>
             </div>
             <div class="filter-actions">
-                <button class="btn btn-primary" onclick="loadSummary()">
-                    Apply Filters
-                </button>
-                <button class="btn btn-success" onclick="exportCSV('summary')">
-                    Export CSV
-                </button>
+                <button class="btn btn-primary" onclick="loadSummary()">Apply Filters</button>
+                <button class="btn btn-success" onclick="exportCSV('summary')">Export CSV</button>
             </div>
         </div>
 
@@ -474,6 +356,7 @@
                         <th>#</th>
                         <th>Student ID</th>
                         <th>Full Name</th>
+                        <th>College</th>
                         <th>Course</th>
                         <th>Year</th>
                         <th>Section</th>
@@ -484,75 +367,62 @@
                 </thead>
                 <tbody id="summaryBody">
                     <tr>
-                        <td colspan="9" class="hint">
-                            <div class="icon"></div>
+                        <td colspan="10" class="hint">
                             Apply filters to see absence summary.
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-
     </div>
 
     <script src="/static/script.js" defer></script>
     <script>
-        // ── Tab Switching ──────────────────────────────────
-        function switchTab(tab) {
+        function switchTab(tab, el) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-
             document.getElementById(`tab-${tab}`).classList.add('active');
-            event.target.classList.add('active');
+            el.classList.add('active');
         }
 
-        // ── Tab 1: Per Event ───────────────────────────────
         async function loadAbsences() {
             const eventId  = document.getElementById('filterEvent').value;
+            const college  = document.getElementById('filterCollege').value;
             const course   = document.getElementById('filterCourse').value;
             const section  = document.getElementById('filterSection').value;
             const year     = document.getElementById('filterYear').value;
 
-            if (!eventId) {
-                showToast('Please select an event first.', 'error');
-                return;
-            }
+            if (!eventId) { showToast('Please select an event first.', 'error'); return; }
 
             const params = new URLSearchParams();
             params.append('event_id', eventId);
-            if (course)  params.append('course_id', course);
-            if (section) params.append('section', section);
+            if (college) params.append('college_id', college);
+            if (course)  params.append('course_id',  course);
+            if (section) params.append('section',    section);
             if (year)    params.append('year_level', year);
 
             const res  = await fetch(`/api/absences?${params.toString()}`);
             const data = await res.json();
-
             renderAbsenceTable(data);
 
             document.getElementById('absentCount').textContent = data.length;
-            const eventSelect = document.getElementById('filterEvent');
+            const sel = document.getElementById('filterEvent');
             document.getElementById('eventLabel').textContent =
-                eventSelect.options[eventSelect.selectedIndex].text;
+                sel.options[sel.selectedIndex].text;
         }
 
         function renderAbsenceTable(students) {
             const body = document.getElementById('absenceBody');
-
-            if (students.length === 0) {
-                body.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="empty">
-                            No absences found!
-                        </td>
-                    </tr>`;
+            if (!students.length) {
+                body.innerHTML = `<tr><td colspan="8" class="empty">No absences found!</td></tr>`;
                 return;
             }
-
             body.innerHTML = students.map((s, i) => `
                 <tr>
                     <td>${i + 1}</td>
                     <td>${s.student_id}</td>
                     <td>${s.full_name}</td>
+                    <td><span class="badge badge-college">${s.college_code}</span></td>
                     <td><span class="badge badge-course">${s.course_code}</span></td>
                     <td>${s.year_level}</td>
                     <td>${s.section}</td>
@@ -561,20 +431,20 @@
             `).join('');
         }
 
-        // ── Tab 2: Absence Summary ─────────────────────────
         async function loadSummary() {
+            const college = document.getElementById('summaryCollege').value;
             const course  = document.getElementById('summaryCourse').value;
             const section = document.getElementById('summarySection').value;
             const year    = document.getElementById('summaryYear').value;
 
             const params = new URLSearchParams();
-            if (course)  params.append('course_id', course);
-            if (section) params.append('section', section);
+            if (college) params.append('college_id', college);
+            if (course)  params.append('course_id',  course);
+            if (section) params.append('section',    section);
             if (year)    params.append('year_level', year);
 
             const res  = await fetch(`/api/absence-summary?${params.toString()}`);
             const data = await res.json();
-
             renderSummaryTable(data.students);
             document.getElementById('summaryTotal').textContent  = data.students.length;
             document.getElementById('summaryEvents').textContent = data.total_events;
@@ -582,80 +452,53 @@
 
         function renderSummaryTable(students) {
             const body = document.getElementById('summaryBody');
-
-            if (students.length === 0) {
-                body.innerHTML = `
-                    <tr>
-                        <td colspan="9" class="empty">No students found.</td>
-                    </tr>`;
+            if (!students.length) {
+                body.innerHTML = `<tr><td colspan="10" class="empty">No students found.</td></tr>`;
                 return;
             }
-
             body.innerHTML = students.map((s, i) => {
                 const rate = s.total_events > 0
-                    ? Math.round((s.absences / s.total_events) * 100)
-                    : 0;
-
-                let rateClass = 'badge-low';
-                if (rate >= 50) rateClass = 'badge-high';
-                else if (rate >= 25) rateClass = 'badge-medium';
-
+                    ? Math.round((s.absences / s.total_events) * 100) : 0;
+                const rateClass = rate >= 50 ? 'badge-high' : rate >= 25 ? 'badge-medium' : 'badge-low';
                 return `
                     <tr>
                         <td>${i + 1}</td>
                         <td>${s.student_id}</td>
                         <td>${s.full_name}</td>
-                        <td>
-                            <span class="badge badge-course">
-                                ${s.course_code}
-                            </span>
-                        </td>
+                        <td><span class="badge badge-college">${s.college_code}</span></td>
+                        <td><span class="badge badge-course">${s.course_code}</span></td>
                         <td>${s.year_level}</td>
                         <td>${s.section}</td>
                         <td>${s.attended}</td>
                         <td>${s.absences}</td>
-                        <td>
-                            <span class="badge ${rateClass}">
-                                ${rate}%
-                            </span>
-                        </td>
+                        <td><span class="badge ${rateClass}">${rate}%</span></td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // ── Export CSV ─────────────────────────────────────
         function exportCSV(tab) {
-            let bodyId, header, colCount;
-
+            let bodyId, header, cols;
             if (tab === 'perEvent') {
-                bodyId   = 'absenceBody';
-                header   = 'Student ID,Full Name,Course,Year,Section,Status\n';
-                colCount = 7;
+                bodyId = 'absenceBody';
+                header = 'Student ID,Full Name,College,Course,Year,Section,Status\n';
+                cols   = 8;
             } else {
-                bodyId   = 'summaryBody';
-                header   = 'Student ID,Full Name,Course,Year,Section,Attended,Absences,Rate\n';
-                colCount = 9;
+                bodyId = 'summaryBody';
+                header = 'Student ID,Full Name,College,Course,Year,Section,Attended,Absences,Rate\n';
+                cols   = 10;
             }
-
             const rows = document.querySelectorAll(`#${bodyId} tr`);
             const csv  = Array.from(rows).map(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length < colCount) return null;
-                return Array.from(cells).slice(1)
-                    .map(c => c.textContent.trim())
-                    .join(',');
+                if (cells.length < cols) return null;
+                return Array.from(cells).slice(1).map(c => c.textContent.trim()).join(',');
             }).filter(Boolean).join('\n');
-
-            if (!csv) {
-                showToast('No data to export.', 'error');
-                return;
-            }
-
+            if (!csv) { showToast('No data to export.', 'error'); return; }
             const blob = new Blob([header + csv], { type: 'text/csv' });
             const url  = URL.createObjectURL(blob);
             const a    = document.createElement('a');
-            a.href     = url;
+            a.href = url;
             a.download = `absences_${tab}_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
             URL.revokeObjectURL(url);

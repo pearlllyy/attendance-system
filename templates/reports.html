@@ -6,12 +6,7 @@
     <title>Reports — Attendance System</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             min-height: 100vh;
             background-color: #0f172a;
@@ -19,7 +14,6 @@
             padding: 32px 24px;
             color: #f1f5f9;
         }
-
         .header {
             display: flex;
             justify-content: space-between;
@@ -28,18 +22,8 @@
             flex-wrap: wrap;
             gap: 12px;
         }
-
-        .header h1 {
-            font-size: 22px;
-            font-weight: 700;
-        }
-
-        .header p {
-            color: #64748b;
-            font-size: 13px;
-            margin-top: 2px;
-        }
-
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p  { color: #64748b; font-size: 13px; margin-top: 2px; }
         .btn {
             padding: 10px 18px;
             border-radius: 8px;
@@ -51,15 +35,12 @@
             text-decoration: none;
             display: inline-block;
         }
-
         .btn-primary   { background: #0ea5e9; color: white; }
         .btn-primary:hover   { background: #0284c7; }
         .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
         .btn-secondary:hover { background: #263347; }
         .btn-success   { background: #16a34a; color: white; }
         .btn-success:hover   { background: #15803d; }
-
-        /* Filter Card */
         .filter-card {
             background: #1e293b;
             border: 1px solid #334155;
@@ -67,7 +48,6 @@
             padding: 24px;
             margin-bottom: 24px;
         }
-
         .filter-card h2 {
             font-size: 14px;
             font-weight: 600;
@@ -76,20 +56,13 @@
             letter-spacing: 0.8px;
             margin-bottom: 20px;
         }
-
         .filter-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 16px;
             margin-bottom: 20px;
         }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
         .filter-group label {
             color: #94a3b8;
             font-size: 11px;
@@ -97,7 +70,6 @@
             text-transform: uppercase;
             letter-spacing: 0.8px;
         }
-
         .filter-group select {
             padding: 9px 12px;
             background: #0f172a;
@@ -108,32 +80,20 @@
             outline: none;
             transition: border-color 0.2s;
         }
-
-        .filter-group select:focus {
-            border-color: #0ea5e9;
-        }
-
-        .filter-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        /* Summary */
+        .filter-group select:focus { border-color: #0ea5e9; }
+        .filter-actions { display: flex; gap: 12px; flex-wrap: wrap; }
         .summary {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 16px;
             margin-bottom: 24px;
         }
-
         .summary-card {
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
             padding: 20px;
         }
-
         .summary-card .label {
             color: #64748b;
             font-size: 12px;
@@ -141,32 +101,18 @@
             letter-spacing: 0.8px;
             font-weight: 600;
         }
-
-        .summary-card .value {
-            font-size: 28px;
-            font-weight: 700;
-            margin-top: 6px;
-        }
-
+        .summary-card .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
         .value.total   { color: #0ea5e9; }
         .value.present { color: #22c55e; }
         .value.late    { color: #f59e0b; }
-
-        /* Table */
         .table-wrapper {
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
             overflow: hidden;
         }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
+        table { width: 100%; border-collapse: collapse; }
         thead { background: #0f172a; }
-
         thead th {
             padding: 14px 16px;
             text-align: left;
@@ -176,20 +122,9 @@
             letter-spacing: 0.8px;
             color: #64748b;
         }
-
-        tbody tr {
-            border-top: 1px solid #0f172a;
-            transition: background 0.15s;
-        }
-
+        tbody tr { border-top: 1px solid #0f172a; transition: background 0.15s; }
         tbody tr:hover { background: #263347; }
-
-        tbody td {
-            padding: 14px 16px;
-            font-size: 14px;
-            color: #cbd5e1;
-        }
-
+        tbody td { padding: 14px 16px; font-size: 14px; color: #cbd5e1; }
         .badge {
             display: inline-block;
             padding: 3px 10px;
@@ -199,44 +134,24 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
-        .badge-present {
-            background: #052e16;
-            color: #22c55e;
-            border: 1px solid #16a34a;
-        }
-
-        .badge-late {
-            background: #1c1009;
-            color: #f59e0b;
-            border: 1px solid #d97706;
-        }
-
-        .badge-course {
-            background: #0c1a2e;
-            color: #0ea5e9;
-            border: 1px solid #0369a1;
-        }
-
-        .empty {
-            text-align: center;
-            padding: 48px;
-            color: #475569;
-            font-size: 14px;
-        }
+        .badge-present { background: #052e16; color: #22c55e; border: 1px solid #16a34a; }
+        .badge-late    { background: #1c1009; color: #f59e0b; border: 1px solid #d97706; }
+        .badge-course  { background: #0c1a2e; color: #0ea5e9; border: 1px solid #0369a1; }
+        .badge-college { background: #1a0c2e; color: #a78bfa; border: 1px solid #7c3aed; }
+        .empty { text-align: center; padding: 48px; color: #475569; font-size: 14px; }
     </style>
 </head>
 <body>
+    {% include 'navbar.html' %}
 
     <div class="header">
         <div>
             <h1>Attendance Reports</h1>
-            <p>Filter and export attendance data by event, course, or status</p>
+            <p>Filter and export attendance data</p>
         </div>
         <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
     </div>
 
-    <!-- Filters -->
     <div class="filter-card">
         <h2>Filter Records</h2>
         <div class="filter-grid">
@@ -252,12 +167,23 @@
                 </select>
             </div>
             <div class="filter-group">
+                <label>College</label>
+                <select id="filterCollege">
+                    <option value="">All Colleges</option>
+                    {% for college in colleges %}
+                        <option value="{{ college.college_id }}">
+                            {{ college.college_code }} — {{ college.college_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
                 <label>Course</label>
                 <select id="filterCourse">
                     <option value="">All Courses</option>
                     {% for course in courses %}
                         <option value="{{ course.course_id }}">
-                            {{ course.course_code }}
+                            [{{ course.college_code }}] {{ course.course_code }}
                         </option>
                     {% endfor %}
                 </select>
@@ -292,25 +218,16 @@
             </div>
         </div>
         <div class="filter-actions">
-            <button class="btn btn-primary" onclick="applyFilters()">
-                Apply Filters
-            </button>
-            <button class="btn btn-success" onclick="exportCSV()">
-                Export CSV
-            </button>
-            <button class="btn btn-secondary" onclick="resetFilters()">
-                Reset
-            </button>
+            <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
+            <button class="btn btn-success" onclick="exportCSV()">Export CSV</button>
+            <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
         </div>
     </div>
 
-    <!-- Summary -->
     <div class="summary">
         <div class="summary-card">
             <div class="label">Total Records</div>
-            <div class="value total" id="totalCount">
-                {{ logs | length }}
-            </div>
+            <div class="value total" id="totalCount">{{ logs | length }}</div>
         </div>
         <div class="summary-card">
             <div class="label">Present</div>
@@ -326,7 +243,6 @@
         </div>
     </div>
 
-    <!-- Table -->
     <div class="table-wrapper">
         <table>
             <thead>
@@ -334,6 +250,7 @@
                     <th>#</th>
                     <th>Student ID</th>
                     <th>Full Name</th>
+                    <th>College</th>
                     <th>Course</th>
                     <th>Year</th>
                     <th>Section</th>
@@ -350,11 +267,8 @@
                         <td>{{ loop.index }}</td>
                         <td>{{ log.student_id }}</td>
                         <td>{{ log.full_name }}</td>
-                        <td>
-                            <span class="badge badge-course">
-                                {{ log.course_code }}
-                            </span>
-                        </td>
+                        <td><span class="badge badge-college">{{ log.college_code }}</span></td>
+                        <td><span class="badge badge-course">{{ log.course_code }}</span></td>
                         <td>{{ log.year_level }}</td>
                         <td>{{ log.section }}</td>
                         <td>{{ log.event_name }}</td>
@@ -368,9 +282,7 @@
                     </tr>
                     {% endfor %}
                 {% else %}
-                    <tr>
-                        <td colspan="10" class="empty">No records found.</td>
-                    </tr>
+                    <tr><td colspan="11" class="empty">No records found.</td></tr>
                 {% endif %}
             </tbody>
         </table>
@@ -379,47 +291,40 @@
     <script src="/static/script.js" defer></script>
     <script>
         async function applyFilters() {
-            const event    = document.getElementById('filterEvent').value;
-            const course   = document.getElementById('filterCourse').value;
-            const section  = document.getElementById('filterSection').value;
-            const year     = document.getElementById('filterYear').value;
-            const status   = document.getElementById('filterStatus').value;
+            const event   = document.getElementById('filterEvent').value;
+            const college = document.getElementById('filterCollege').value;
+            const course  = document.getElementById('filterCourse').value;
+            const section = document.getElementById('filterSection').value;
+            const year    = document.getElementById('filterYear').value;
+            const status  = document.getElementById('filterStatus').value;
 
             const params = new URLSearchParams();
-            if (event)   params.append('event_id', event);
-            if (course)  params.append('course_id', course);
-            if (section) params.append('section', section);
+            if (event)   params.append('event_id',   event);
+            if (college) params.append('college_id', college);
+            if (course)  params.append('course_id',  course);
+            if (section) params.append('section',    section);
             if (year)    params.append('year_level', year);
-            if (status)  params.append('status', status);
+            if (status)  params.append('status',     status);
 
             const res  = await fetch(`/api/reports?${params.toString()}`);
             const data = await res.json();
-
             renderTable(data);
             updateCounts(data);
         }
 
         function renderTable(logs) {
             const body = document.getElementById('reportBody');
-
-            if (logs.length === 0) {
-                body.innerHTML = `
-                    <tr>
-                        <td colspan="10" class="empty">No records found.</td>
-                    </tr>`;
+            if (!logs.length) {
+                body.innerHTML = `<tr><td colspan="11" class="empty">No records found.</td></tr>`;
                 return;
             }
-
             body.innerHTML = logs.map((log, i) => `
                 <tr>
                     <td>${i + 1}</td>
                     <td>${log.student_id}</td>
                     <td>${log.full_name}</td>
-                    <td>
-                        <span class="badge badge-course">
-                            ${log.course_code}
-                        </span>
-                    </td>
+                    <td><span class="badge badge-college">${log.college_code}</span></td>
+                    <td><span class="badge badge-course">${log.course_code}</span></td>
                     <td>${log.year_level}</td>
                     <td>${log.section}</td>
                     <td>${log.event_name}</td>
@@ -435,54 +340,34 @@
         }
 
         function updateCounts(logs) {
-            document.getElementById('totalCount').textContent =
-                logs.length;
-            document.getElementById('presentCount').textContent =
-                logs.filter(l => l.status === 'Present').length;
-            document.getElementById('lateCount').textContent =
-                logs.filter(l => l.status === 'Late').length;
+            document.getElementById('totalCount').textContent   = logs.length;
+            document.getElementById('presentCount').textContent = logs.filter(l => l.status === 'Present').length;
+            document.getElementById('lateCount').textContent    = logs.filter(l => l.status === 'Late').length;
         }
 
         function exportCSV() {
             const rows   = document.querySelectorAll('#reportBody tr');
-            const header = 'Student ID,Full Name,Course,Year,Section,Event,Time In,Time Out,Status\n';
-
+            const header = 'Student ID,Full Name,College,Course,Year,Section,Event,Time In,Time Out,Status\n';
             const csv = Array.from(rows).map(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length < 10) return null;
-                return [
-                    cells[1].textContent.trim(),
-                    cells[2].textContent.trim(),
-                    cells[3].textContent.trim(),
-                    cells[4].textContent.trim(),
-                    cells[5].textContent.trim(),
-                    cells[6].textContent.trim(),
-                    cells[7].textContent.trim(),
-                    cells[8].textContent.trim(),
-                    cells[9].textContent.trim()
-                ].join(',');
+                if (cells.length < 11) return null;
+                return [1,2,3,4,5,6,7,8,9,10].map(i => cells[i].textContent.trim()).join(',');
             }).filter(Boolean).join('\n');
-
-            if (!csv) {
-                showToast('No data to export.', 'error');
-                return;
-            }
-
+            if (!csv) { showToast('No data to export.', 'error'); return; }
             const blob = new Blob([header + csv], { type: 'text/csv' });
             const url  = URL.createObjectURL(blob);
             const a    = document.createElement('a');
-            a.href     = url;
-            a.download = `attendance_report_${new Date().toISOString().slice(0,10)}.csv`;
+            a.href = url;
+            a.download = `report_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
             URL.revokeObjectURL(url);
         }
 
         function resetFilters() {
-            document.getElementById('filterEvent').value   = '';
-            document.getElementById('filterCourse').value  = '';
-            document.getElementById('filterSection').value = '';
-            document.getElementById('filterYear').value    = '';
-            document.getElementById('filterStatus').value  = '';
+            ['filterEvent','filterCollege','filterCourse',
+             'filterSection','filterYear','filterStatus'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
             applyFilters();
         }
     </script>

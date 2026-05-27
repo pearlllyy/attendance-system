@@ -9,3 +9,5 @@ class Config:
 
     CUTOFF_HOUR = 8
     CUTOFF_MINUTE = 0
+
+    ADMIN_PASSWORD = 'yourPasswordHere'
