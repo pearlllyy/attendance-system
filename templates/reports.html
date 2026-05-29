@@ -142,7 +142,31 @@
     </style>
 </head>
 <body>
-    {% include 'navbar.html' %}
+    <nav class="navbar">
+        <a href="/dashboard" class="navbar-brand">
+            Attendance System <span>Admin</span>
+        </a>
+        <div class="navbar-links">
+            <a href="/dashboard">
+                Dashboard
+            </a>
+            <a href="/students">
+                Students
+            </a>
+            <a href="/events">
+                Events
+            </a>
+            <a href="/absences">
+                Absences
+            </a>
+            <a href="/reports">
+                Reports
+            </a>
+            <a href="/admin/logout" class="logout-btn">
+                Logout
+            </a>
+        </div>
+    </nav>
 
     <div class="header">
         <div>

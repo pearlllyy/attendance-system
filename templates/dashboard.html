@@ -189,7 +189,31 @@
     </style>
 </head>
 <body>
-    {% include 'navbar.html' %}
+    <nav class="navbar">
+        <a href="/dashboard" class="navbar-brand">
+            Attendance System <span>Admin</span>
+        </a>
+        <div class="navbar-links">
+            <a href="/dashboard" class="{{ 'active' if request.endpoint == 'dashboard' }}">
+                Dashboard
+            </a>
+            <a href="/students" class="{{ 'active' if request.endpoint == 'students' }}">
+                Students
+            </a>
+            <a href="/events" class="{{ 'active' if request.endpoint == 'events' }}">
+                Events
+            </a>
+            <a href="/absences" class="{{ 'active' if request.endpoint == 'absences' }}">
+                Absences
+            </a>
+            <a href="/reports" class="{{ 'active' if request.endpoint == 'reports' }}">
+                Reports
+            </a>
+            <a href="/admin/logout" class="logout-btn">
+                Logout
+            </a>
+        </div>
+    </nav>
     <!-- <div class="header">
         <div>
             <h1>Attendance Dashboard</h1>
