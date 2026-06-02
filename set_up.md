@@ -16,7 +16,7 @@ then to activate the virtual environment:
 to deactivate:
     `deactivate`
 
-If using firewall, either set profile to trusted or add 5000 port to your firewall
+If using firewall, set profile to trusted or add 5000 tcp port to your firewall
 
 then install the requirements.
 to run, just simply execute 

@@ -130,6 +130,11 @@ def scan():
         """, (student_id, event['event_id']))
         existing = cursor.fetchone()
 
+        if not existing and scan_mode == 'OUT':
+            return jsonify({'success': False,
+                'message': f"{student['full_name']} did not scanned IN yet"
+                })
+
         if existing:
             if scan_mode == 'IN':
                 return jsonify({'success': False,
