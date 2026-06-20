@@ -386,7 +386,7 @@
                         <th>Section</th>
                         <th>Attended</th>
                         <th>Absences</th>
-                        <th>Rate</th>
+                        <th>Penalty</th> <!— NOTE: This column shows the penalty for each student's absences 1 absence = 2 hours—>
                     </tr>
                 </thead>
                 <tbody id="summaryBody">
@@ -481,9 +481,9 @@
                 return;
             }
             body.innerHTML = students.map((s, i) => {
-                const rate = s.total_events > 0
-                    ? Math.round((s.absences / s.total_events) * 100) : 0;
-                const rateClass = rate >= 50 ? 'badge-high' : rate >= 25 ? 'badge-medium' : 'badge-low';
+                const penalty = s.total_events > 0
+                    ? Math.round((s.absences * 2)) : 0; // 1 absence = 2 hours
+                const rateClass = penalty >= 10 ? 'badge-high' : penalty >= 5 ? 'badge-medium' : 'badge-low';
                 return `
                     <tr>
                         <td>${i + 1}</td>
@@ -495,7 +495,7 @@
                         <td>${s.section}</td>
                         <td>${s.attended}</td>
                         <td>${s.absences}</td>
-                        <td><span class="badge ${rateClass}">${rate}%</span></td>
+                        <td><span class="badge ${rateClass}">${penalty} hours</span></td>
                     </tr>
                 `;
             }).join('');
