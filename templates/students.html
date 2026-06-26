@@ -153,7 +153,7 @@
 
         /* CSV Template */
         .template-hint {
-            background: #0f172a;
+            background: #1e293b;
             border: 1px solid #334155;
             border-radius: 8px;
             padding: 12px 16px;
@@ -161,6 +161,35 @@
             color: #64748b;
             margin-bottom: 16px;
             font-family: monospace;
+        }
+
+        .course-reference-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 0;
+        }
+
+        .course-reference-col {
+            background: #1e293b;
+            border-radius: 10px;
+            padding-left: 10px;
+        }
+
+        .course-reference-col .college-title {
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 3px;
+        }
+
+        .course-reference-row {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.5;
+            padding-left: 8px;
         }
 
         /* Stats */
@@ -393,16 +422,18 @@
 
             <div class="form-group">
                 <label>Course ID Reference</label>
-                {% for college in colleges %}
-                    <small style="color:#94a3b8; font-size:12px; font-weight:600; margin-top:6px; display:block;">
-                        {{ college.college_code }}
-                    </small>
-                    {% for course in courses if course.college_id == college.college_id %}
-                        <small style="color:#64748b; font-size:12px; display:block; padding-left:8px;">
-                            {{ course.course_id }} = {{ course.course_code }}
-                        </small>
+                <div class="course-reference-grid">
+                    {% for college in colleges %}
+                        <div class="course-reference-col">
+                            <div class="college-title">{{ college.college_code }}</div>
+                            {% for course in courses if course.college_id == college.college_id %}
+                                <div class="course-reference-row">
+                                    {{ course.course_id }} = {{ course.course_code }}
+                                </div>
+                            {% endfor %}
+                        </div>
                     {% endfor %}
-                {% endfor %}
+                </div>
             </div>
 
             <div class="upload-area" onclick="document.getElementById('csvFile').click()">
