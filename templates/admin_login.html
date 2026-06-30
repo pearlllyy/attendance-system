@@ -64,6 +64,27 @@
             line-height: 1.5;
         }
 
+        .setup-banner {
+            margin: -6px 0 22px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.12);
+            color: #f8fafc;
+        }
+
+        .setup-banner strong {
+            display: block;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .setup-banner p {
+            color: #fed7aa;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
         .field {
             margin-bottom: 20px;
         }
@@ -187,6 +208,13 @@
             flex-shrink: 0;
         }
 
+        .setup-note {
+            color: #cbd5e1;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
         .back-link {
             text-align: center;
             margin-top: 22px;
@@ -208,18 +236,28 @@
     <div class="card">
         <div class="logo">
             <span class="badge">
-                Admin access
+                {% if setup_mode %}Initial setup{% else %}Admin access{% endif %}
             </span>
             <h1>Attendance system</h1>
-            <p>Restricted to administrators only. Accessing without permission will be penalized.</p>
+            {% if setup_mode %}
+                <p>No admin password is configured yet. Set one now to unlock the dashboard.</p>
+            {% else %}
+                <p>Restricted to administrators only. Accessing without permission will be penalized.</p>
+            {% endif %}
         </div>
 
+        {% if setup_mode %}
+        <div class="setup-banner">
+            <strong>Admin password required</strong>
+        </div>
+        {% endif %}
+
         <div class="field">
-            <label for="password">Password</label>
+            <label for="password">{% if setup_mode %}New password{% else %}Password{% endif %}</label>
             <div class="input-wrap">
                 <svg class="lock-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
                 <input type="password" id="password"
-                    placeholder="Enter admin password"
+                    placeholder="{% if setup_mode %}Create a new admin password{% else %}Enter admin password{% endif %}"
                     autocomplete="current-password"
                     onkeydown="if(event.key==='Enter') login()">
             </div>
@@ -229,14 +267,27 @@
             </div>
         </div>
 
+        {% if setup_mode %}
+        <div class="field">
+            <label for="confirmPassword">Confirm password</label>
+            <div class="input-wrap">
+                <svg class="lock-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                <input type="password" id="confirmPassword"
+                    placeholder="Confirm new password"
+                    autocomplete="new-password"
+                    onkeydown="if(event.key==='Enter') login()">
+            </div>
+        </div>
+        {% endif %}
+
         <button onclick="login()" id="loginBtn">
-            <span class="btn-text">Login</span>
+            <span class="btn-text">{% if setup_mode %}Save password{% else %}Login{% endif %}</span>
             <span class="spinner"></span>
         </button>
 
         <div class="error" id="error">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-            <span id="error-text">Incorrect password. Please try again.</span>
+            <span id="error-text">{% if setup_mode %}Please create a password first.{% else %}Incorrect password. Please try again.{% endif %}</span>
         </div>
 
         <div class="back-link">
@@ -248,8 +299,10 @@
     </div>
 
     <script>
+        const isSetupMode = {{ 'true' if setup_mode else 'false' }};
         const pwdInput = document.getElementById('password');
         const showPwd  = document.getElementById('showPwd');
+        const confirmPwdInput = document.getElementById('confirmPassword');
 
         showPwd.addEventListener('change', () => {
             pwdInput.type = showPwd.checked ? 'text' : 'password';
@@ -257,12 +310,21 @@
 
         async function login() {
             const password = pwdInput.value;
+            const confirmPassword = confirmPwdInput ? confirmPwdInput.value : '';
             const error     = document.getElementById('error');
             const errorText = document.getElementById('error-text');
             const btn       = document.getElementById('loginBtn');
 
             if (!password) {
-                errorText.textContent = 'Please enter a password.';
+                errorText.textContent = isSetupMode
+                    ? 'Please create a password first.'
+                    : 'Please enter a password.';
+                error.style.display = 'flex';
+                return;
+            }
+
+            if (isSetupMode && !confirmPassword) {
+                errorText.textContent = 'Please confirm the new password.';
                 error.style.display = 'flex';
                 return;
             }
@@ -272,10 +334,14 @@
             btn.disabled = true;
 
             try {
+                const payload = { password };
+                if (isSetupMode) {
+                    payload.confirm_password = confirmPassword;
+                }
                 const res  = await fetch('/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
 

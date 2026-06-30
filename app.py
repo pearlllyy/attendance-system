@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from config import Config
 import pymysql
@@ -5,6 +6,8 @@ from datetime import datetime
 import csv
 import io
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import find_dotenv, load_dotenv, set_key
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -29,6 +32,32 @@ def td_to_str(td):
         return f'{h:02d}:{m:02d}:{s:02d}'
     return str(td)
 
+
+def save_admin_password(new_password):
+    env_path = find_dotenv(usecwd=True)
+    if not env_path:
+        env_path = os.path.join(os.getcwd(), '.env')
+
+    hashed_password = generate_password_hash(new_password)
+    set_key(env_path, 'ADMIN_PASSWORD', hashed_password)
+    load_dotenv(env_path, override=True)
+    app.config['ADMIN_PASSWORD'] = hashed_password
+
+
+def admin_password_matches(candidate_password):
+    stored_password = (app.config.get('ADMIN_PASSWORD') or '').strip()
+
+    if not stored_password:
+        return False
+
+    if stored_password.startswith('pbkdf2:') or stored_password.startswith('scrypt:'):
+        try:
+            return check_password_hash(stored_password, candidate_password)
+        except ValueError:
+            return False
+
+    return candidate_password == stored_password
+
 # NOTE: The following code is a Flask application that manages student attendance for events. It includes routes for station login, scanning student IDs, and admin functionalities such as managing events, students, and viewing reports. The application uses a MySQL database to store data and provides JSON APIs for various operations. 
 
 # ─── Authentication ──────────────────────────────────────────────────────────
@@ -42,13 +71,39 @@ def login_required(f): # Function decorator to check if admin is logged in
 
 @app.route('/admin/login', methods=['GET', 'POST']) # Admin login route
 def admin_login(): # Admin login function
+    setup_mode = not (app.config.get('ADMIN_PASSWORD') or '').strip()
+
     if request.method == 'POST':
-        data = request.get_json()
-        if data.get('password') == app.config['ADMIN_PASSWORD']:
+        data = request.get_json(silent=True) or {}
+        password = data.get('password') or ''
+
+        if setup_mode:
+            confirm_password = data.get('confirm_password') or ''
+
+            if not password.strip():
+                return jsonify({'success': False, 'message': 'Please enter a new admin password.'})
+            if password != confirm_password:
+                return jsonify({'success': False, 'message': 'Passwords do not match.'})
+
+            try:
+                save_admin_password(password)
+            except Exception:
+                return jsonify({'success': False, 'message': 'Unable to save the admin password. Please check your .env file permissions.'})
+
+            session['admin_logged_in'] = True
+            return jsonify({'success': True, 'setup': True, 'message': 'Admin password saved successfully.'})
+
+        if admin_password_matches(password):
+            stored_password = (app.config.get('ADMIN_PASSWORD') or '').strip()
+            if stored_password and not (stored_password.startswith('pbkdf2:') or stored_password.startswith('scrypt:')):
+                try:
+                    save_admin_password(password)
+                except Exception:
+                    pass
             session['admin_logged_in'] = True
             return jsonify({'success': True})
         return jsonify({'success': False, 'message': 'Incorrect password'})
-    return render_template('admin_login.html')
+    return render_template('admin_login.html', setup_mode=setup_mode)
 
 @app.route('/admin/logout') # Admin logout route
 def admin_logout():
