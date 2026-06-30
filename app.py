@@ -29,8 +29,10 @@ def td_to_str(td):
         return f'{h:02d}:{m:02d}:{s:02d}'
     return str(td)
 
-# ─── Auth ──────────────────────────────────────────────────────────
-def login_required(f):
+# NOTE: The following code is a Flask application that manages student attendance for events. It includes routes for station login, scanning student IDs, and admin functionalities such as managing events, students, and viewing reports. The application uses a MySQL database to store data and provides JSON APIs for various operations. 
+
+# ─── Authentication ──────────────────────────────────────────────────────────
+def login_required(f): # Function decorator to check if admin is logged in
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('admin_logged_in'):
@@ -38,8 +40,8 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
+@app.route('/admin/login', methods=['GET', 'POST']) # Admin login route
+def admin_login(): # Admin login function
     if request.method == 'POST':
         data = request.get_json()
         if data.get('password') == app.config['ADMIN_PASSWORD']:
@@ -48,26 +50,26 @@ def admin_login():
         return jsonify({'success': False, 'message': 'Incorrect password'})
     return render_template('admin_login.html')
 
-@app.route('/admin/logout')
+@app.route('/admin/logout') # Admin logout route
 def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect(url_for('admin_login'))
 
 # ─── Station Routes (no login required) ───────────────────────────
-@app.route('/')
+@app.route('/') # Home route (landing page)
 def index():
     return render_template('index.html')
 
-@app.route('/station/login', methods=['POST'])
-def station_login():
+@app.route('/station/login', methods=['POST']) # Station login route
+def station_login(): # Station login function
     data = request.get_json()
     session['station_id']   = data['station_id']
     session['station_name'] = data['station_name']
     session['course_id']    = data['course_id']
     return jsonify({'success': True})
 
-@app.route('/scanner')
-def scanner():
+@app.route('/scanner') # Scanner route (for scanning student IDs)
+def scanner():  # Scanner function
     if 'station_id' not in session:
         return redirect(url_for('index'))
     db = get_db()
@@ -81,8 +83,8 @@ def scanner():
         event=event
     )
 
-@app.route('/scan', methods=['POST'])
-def scan():
+@app.route('/scan', methods=['POST']) # Scan route (for processing student ID scans)
+def scan(): # Scan function
     if 'station_id' not in session:
         return jsonify({'success': False, 'message': 'No station logged in'})
 
