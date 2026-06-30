@@ -609,6 +609,38 @@ def add_student():
         cursor.close()
         db.close()
 
+@app.route('/api/students/update', methods=['POST'])
+@login_required
+def update_student():
+    data = request.get_json()
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            UPDATE students
+            SET full_name = %s,
+                course_id = %s,
+                year_level = %s,
+                section = %s
+            WHERE student_id = %s
+        """, (
+            data['full_name'].strip(),
+            data['course_id'],
+            data['year_level'],
+            data['section'].strip().upper(),
+            data['student_id'].strip()
+        ))
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'Student not found'})
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        db.close()
+
 @app.route('/api/students/delete', methods=['POST'])
 @login_required
 def delete_student():

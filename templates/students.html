@@ -304,6 +304,52 @@
             color: #475569;
             font-size: 14px;
         }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.72);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            width: min(100%, 460px);
+            padding: 24px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            color: #f1f5f9;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -509,6 +555,16 @@
                         <td>{{ student.year_level }}</td>
                         <td>{{ student.section }}</td>
                         <td>
+                            <button class="btn btn-secondary"
+                                style="padding: 5px 10px; font-size: 12px; margin-right: 6px;"
+                                data-student-id="{{ student.student_id }}"
+                                data-full-name="{{ student.full_name }}"
+                                data-course-id="{{ student.course_id }}"
+                                data-year-level="{{ student.year_level }}"
+                                data-section="{{ student.section }}"
+                                onclick="editStudent(this.dataset)">
+                                Edit
+                            </button>
                             <button class="btn btn-danger"
                                 style="padding: 5px 10px; font-size: 12px;"
                                 onclick="deleteStudent('{{ student.student_id }}', '{{ student.full_name }}')">
@@ -528,8 +584,109 @@
         </table>
     </div>
 
+    <div class="modal-backdrop" id="editModalBackdrop" onclick="if (event.target.id === 'editModalBackdrop') closeEditModal()">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+            <div class="modal-header">
+                <h3 id="editModalTitle">Edit Student</h3>
+                <button class="modal-close" type="button" onclick="closeEditModal()" aria-label="Close">×</button>
+            </div>
+            <form id="editStudentForm" onsubmit="event.preventDefault(); saveStudentEdit();">
+                <input type="hidden" id="editStudentId">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="editFullName" placeholder="e.g. Juan Dela Cruz">
+                </div>
+                <div class="form-group">
+                    <label>Course</label>
+                    <select id="editCourseId">
+                        <option value="">— Select Course —</option>
+                        {% for college in colleges %}
+                            <optgroup label="{{ college.college_code }} — {{ college.college_name }}">
+                                {% for course in courses if course.college_id == college.college_id %}
+                                    <option value="{{ course.course_id }}">
+                                        {{ course.course_code }} — {{ course.course_name }}
+                                    </option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Year Level</label>
+                    <select id="editYearLevel">
+                        <option value="">— Select Year —</option>
+                        <option value="1">1st Year</option>
+                        <option value="2">2nd Year</option>
+                        <option value="3">3rd Year</option>
+                        <option value="4">4th Year</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Section</label>
+                    <input type="text" id="editSection" placeholder="e.g. A" maxlength="5" style="text-transform: uppercase;">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="/static/script.js" defer></script>
     <script>
+        function openEditModal() {
+            document.getElementById('editModalBackdrop').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModalBackdrop').style.display = 'none';
+            document.getElementById('editStudentForm').reset();
+        }
+
+        function editStudent(data) {
+            document.getElementById('editStudentId').value = data.studentId || '';
+            document.getElementById('editFullName').value = data.fullName || '';
+            document.getElementById('editCourseId').value = data.courseId || '';
+            document.getElementById('editYearLevel').value = data.yearLevel || '';
+            document.getElementById('editSection').value = data.section || '';
+            openEditModal();
+        }
+
+        async function saveStudentEdit() {
+            const studentId = document.getElementById('editStudentId').value.trim();
+            const fullName  = document.getElementById('editFullName').value.trim();
+            const courseId  = document.getElementById('editCourseId').value;
+            const yearLevel = document.getElementById('editYearLevel').value;
+            const section   = document.getElementById('editSection').value.trim().toUpperCase();
+
+            if (!studentId || !fullName || !courseId || !yearLevel || !section) {
+                showToast('Please fill in all fields.', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/students/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    full_name:  fullName,
+                    course_id:  courseId,
+                    year_level: yearLevel,
+                    section:    section
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('Student updated successfully!', 'success');
+                closeEditModal();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+
         // ── Manual Add ─────────────────────────────────────
         async function addStudent() {
             const studentId = document.getElementById('studentId').value.trim();
