@@ -29,6 +29,8 @@
 
 - Make sure Podman is installed and available in your terminal.
 
+- Use `compose.yaml` to start the app and database together. Do not build only the `Containerfile`, because that starts the Flask app without the MariaDB service.
+
 - Start the full system with:
     `podman compose up --build`
 
@@ -62,16 +64,19 @@
 
 ## Using Podman on Windows
 
-- Install Podman Desktop for Windows.
+- On a fresh Windows machine, double-click `setup-windows.bat` first.
 
-- Open Podman Desktop and make sure the Podman machine is running.
+- The setup script will install WSL2 if it is missing. If Windows asks for a restart, reboot the machine and run `setup-windows.bat` again.
 
-- Open PowerShell or CMD in the project folder.
+- The WSL2 install may ask for administrator permission.
 
-- Start the system with:
-    `podman compose up --build`
+- The setup script will also install Podman with `winget` if Podman is missing.
 
-- If your terminal cannot find `podman`, open the Podman Desktop terminal or make sure Podman is added to your PATH.
+- If `winget` is not available, install the Microsoft App Installer first, then run the setup script again.
+
+- Once setup is complete, start the system by double-clicking `launch-windows.bat`.
+
+- To stop the system, double-click `stop-windows.bat`.
 
 - Open the app in your browser at:
     `https://localhost:5000`
@@ -79,6 +84,3 @@
 - The browser will warn you about the self-signed certificate the first time. You can continue for local use.
 
 - The database runs inside Podman, so XAMPP is not needed for the Windows Podman setup.
-
-- If you want to stop everything, use:
-    `podman compose down`
