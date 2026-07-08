@@ -70,6 +70,8 @@
 
 - To stop the system, double-click `stop-windows.bat`.
 
+- Stopping removes the running containers but keeps the database volume, so your saved data remains for the next launch.
+
 - Open the app in your browser at:
     `https://localhost:5000`
 

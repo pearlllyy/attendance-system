@@ -8,6 +8,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-podman stop attendance-app db >nul 2>nul
+podman rm -f attendance-app attendance-db >nul 2>nul
 echo Attendance system containers stopped.
-pause
+timeout /t 3 /nobreak >nul
