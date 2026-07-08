@@ -64,17 +64,9 @@
 
 ## Using Podman on Windows
 
-- On a fresh Windows machine, double-click `setup-windows.bat` first.
+- Install Podman for Windows first. Podman on Windows uses WSL2 in the background, so WSL2 must be available on the machine.
 
-- The setup script will install WSL2 if it is missing. If Windows asks for a restart, reboot the machine and run `setup-windows.bat` again.
-
-- The WSL2 install may ask for administrator permission.
-
-- The setup script will also install Podman with `winget` if Podman is missing.
-
-- If `winget` is not available, install the Microsoft App Installer first, then run the setup script again.
-
-- Once setup is complete, start the system by double-clicking `launch-windows.bat`.
+- Start the system by double-clicking `launch-windows.bat`.
 
 - To stop the system, double-click `stop-windows.bat`.
 

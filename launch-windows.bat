@@ -7,7 +7,7 @@ cd /d "%PROJECT_DIR%"
 where podman >nul 2>nul
 if errorlevel 1 (
     echo Podman was not found in PATH.
-    echo Run setup-windows.bat first.
+    echo Install Podman first, then run this file again.
     pause
     exit /b 1
 )
