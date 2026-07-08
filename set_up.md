@@ -52,6 +52,8 @@
 
 - If `.env` does not exist yet, the container will create it automatically on first boot and generate a `SECRET_KEY` for you.
 
+- The container also writes `MYSQL_HOST=db` into `.env` so the Flask app connects to the MariaDB service inside Podman instead of `localhost`.
+
 - If the admin password is still empty in `.env`, the app will let you set it during the first admin login and save it back to `.env`.
 
 - If you want to reset everything, remove the containers and the database volume, then start again:
