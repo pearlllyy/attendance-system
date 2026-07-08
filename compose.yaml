@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Containerfile
+    depends_on:
+      - db
+    environment:
+      MYSQL_HOST: db
+    volumes:
+      - ./:/app:Z
+    ports:
+      - "5000:5000"
+
+  db:
+    image: docker.io/library/mariadb:11.4
+    environment:
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+      MARIADB_ROOT_HOST: "%"
+    volumes:
+      - attendance-db-data:/var/lib/mysql
+      - ./attendance-db.sql:/docker-entrypoint-initdb.d/attendance-db.sql:ro,Z
+
+volumes:
+  attendance-db-data:
