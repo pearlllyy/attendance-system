@@ -68,6 +68,8 @@
 
 - Start the system by double-clicking `launch-windows.bat`.
 
+- If the app fails with `entrypoint.sh: No such file or directory`, pull the latest project files and run `launch-windows.bat` again. That error usually means a shell script was saved with Windows line endings; the build now normalizes those automatically.
+
 - To stop the system, double-click `stop-windows.bat`.
 
 - Stopping removes the running containers but keeps the database volume, so your saved data remains for the next launch.

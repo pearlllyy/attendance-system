@@ -9,7 +9,8 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . ./
-RUN install -m 755 entrypoint.sh /usr/local/bin/entrypoint.sh
+# Strip Windows CRLF so the shebang works inside Linux containers.
+RUN sed -i 's/\r$//' entrypoint.sh && install -m 755 entrypoint.sh /usr/local/bin/entrypoint.sh
 
 EXPOSE 5000
 
