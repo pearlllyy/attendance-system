@@ -1,8 +1,9 @@
 import os
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+import json
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, send_file
 from config import Config
 import pymysql
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 import csv
 import io
 from functools import wraps
@@ -33,6 +34,50 @@ def td_to_str(td):
     return str(td)
 
 
+def serialize_backup_value(value):
+    if isinstance(value, timedelta):
+        return td_to_str(value)
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    if hasattr(value, 'isoformat'):
+        return value.isoformat()
+    return value
+
+
+def serialize_backup_rows(rows):
+    return [
+        {key: serialize_backup_value(value) for key, value in row.items()}
+        for row in rows
+    ]
+
+
+def fetch_backup_rows(cursor, table, order_by):
+    cursor.execute(f"SELECT * FROM {table} ORDER BY {order_by}")
+    return cursor.fetchall()
+
+
+def upsert_backup_rows(cursor, table, columns, pk_column, rows):
+    if not rows:
+        return 0
+
+    column_list = ', '.join(columns)
+    placeholders = ', '.join(['%s'] * len(columns))
+    updates = ', '.join(
+        f"{column} = VALUES({column})"
+        for column in columns
+        if column != pk_column
+    )
+
+    sql = f"INSERT INTO {table} ({column_list}) VALUES ({placeholders})"
+    if updates:
+        sql += f" ON DUPLICATE KEY UPDATE {updates}"
+
+    for row in rows:
+        cursor.execute(sql, [row.get(column) for column in columns])
+
+    return len(rows)
+
+
 def save_admin_password(new_password):
     env_path = find_dotenv(usecwd=True)
     if not env_path:
@@ -57,6 +102,59 @@ def admin_password_matches(candidate_password):
             return False
 
     return candidate_password == stored_password
+
+
+def build_backup_payload():
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        payload = {
+            'version': 1,
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+            'colleges': serialize_backup_rows(fetch_backup_rows(cursor, 'colleges', 'college_id')),
+            'courses': serialize_backup_rows(fetch_backup_rows(cursor, 'courses', 'course_id')),
+            'students': serialize_backup_rows(fetch_backup_rows(cursor, 'students', 'student_id')),
+            'stations': serialize_backup_rows(fetch_backup_rows(cursor, 'stations', 'station_id')),
+            'events': serialize_backup_rows(fetch_backup_rows(cursor, 'events', 'event_id')),
+            'attendance_logs': serialize_backup_rows(fetch_backup_rows(cursor, 'attendance_logs', 'log_id')),
+        }
+        return payload
+    finally:
+        cursor.close()
+        db.close()
+
+
+def import_backup_payload(payload):
+    db = get_db()
+    cursor = db.cursor()
+
+    table_specs = [
+        ('colleges', ['college_id', 'college_code', 'college_name'], 'college_id'),
+        ('courses', ['course_id', 'course_code', 'course_name', 'major', 'college_id'], 'course_id'),
+        ('students', ['student_id', 'full_name', 'course_id', 'year_level', 'section'], 'student_id'),
+        ('stations', ['station_id', 'station_name', 'course_id'], 'station_id'),
+        ('events', ['event_id', 'event_name', 'event_date', 'time_in_cutoff', 'time_out_start', 'is_active'], 'event_id'),
+        ('attendance_logs', ['log_id', 'student_id', 'event_id', 'station_id', 'time_in', 'time_out', 'status'], 'log_id'),
+    ]
+
+    try:
+        counts = {}
+        for table, columns, pk_column in table_specs:
+            rows = payload.get(table, [])
+            if rows is None:
+                rows = []
+            if not isinstance(rows, list):
+                raise ValueError(f"'{table}' must be a list.")
+            counts[table] = upsert_backup_rows(cursor, table, columns, pk_column, rows)
+
+        db.commit()
+        return counts
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        cursor.close()
+        db.close()
 
 # NOTE: The following code is a Flask application that manages student attendance for events. It includes routes for station login, scanning student IDs, and admin functionalities such as managing events, students, and viewing reports. The application uses a MySQL database to store data and provides JSON APIs for various operations. 
 
@@ -468,6 +566,85 @@ def reports():
     db.close()
     return render_template('reports.html', logs=logs, colleges=colleges,
                            courses=courses, events=events)
+
+
+@app.route('/backup')
+@login_required
+def backup():
+    db = get_db()
+    cursor = db.cursor()
+    colleges_total = courses_total = students_total = stations_total = events_total = logs_total = 0
+    try:
+        cursor.execute("SELECT COUNT(*) as total FROM colleges")
+        colleges_total = cursor.fetchone()['total']
+        cursor.execute("SELECT COUNT(*) as total FROM courses")
+        courses_total = cursor.fetchone()['total']
+        cursor.execute("SELECT COUNT(*) as total FROM students")
+        students_total = cursor.fetchone()['total']
+        cursor.execute("SELECT COUNT(*) as total FROM stations")
+        stations_total = cursor.fetchone()['total']
+        cursor.execute("SELECT COUNT(*) as total FROM events")
+        events_total = cursor.fetchone()['total']
+        cursor.execute("SELECT COUNT(*) as total FROM attendance_logs")
+        logs_total = cursor.fetchone()['total']
+    except Exception:
+        raise
+    finally:
+        cursor.close()
+        db.close()
+
+    return render_template(
+        'backup.html',
+        colleges_total=colleges_total,
+        courses_total=courses_total,
+        students_total=students_total,
+        stations_total=stations_total,
+        events_total=events_total,
+        logs_total=logs_total,
+    )
+
+
+@app.route('/api/backup/export')
+@login_required
+def export_backup():
+    payload = build_backup_payload()
+    data = json.dumps(payload, indent=2, ensure_ascii=False).encode('utf-8')
+    filename = f"attendance_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    return send_file(
+        io.BytesIO(data),
+        mimetype='application/json',
+        as_attachment=True,
+        download_name=filename,
+    )
+
+
+@app.route('/api/backup/import', methods=['POST'])
+@login_required
+def import_backup():
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No backup file uploaded.'})
+
+    file = request.files['file']
+    if not file.filename or not file.filename.lower().endswith('.json'):
+        return jsonify({'success': False, 'message': 'Backup file must be a .json file.'})
+
+    try:
+        payload = json.loads(file.stream.read().decode('utf-8'))
+    except Exception:
+        return jsonify({'success': False, 'message': 'Invalid backup file. Please upload a valid JSON backup.'})
+
+    if not isinstance(payload, dict):
+        return jsonify({'success': False, 'message': 'Invalid backup structure.'})
+
+    try:
+        counts = import_backup_payload(payload)
+        return jsonify({
+            'success': True,
+            'message': 'Backup imported successfully.',
+            'counts': counts
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/reports')
 @login_required

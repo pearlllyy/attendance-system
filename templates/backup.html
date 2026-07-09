@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup - Attendance System</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/script.js" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background-color: #0f172a;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 32px 24px;
+            color: #f1f5f9;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p { color: #64748b; font-size: 13px; margin-top: 2px; }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary { background: #0ea5e9; color: white; }
+        .btn-primary:hover { background: #0284c7; }
+        .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+        .btn-secondary:hover { background: #263347; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-warning { background: #d97706; color: white; }
+        .btn-warning:hover { background: #b45309; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .card h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+        }
+
+        .card p {
+            color: #94a3b8;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .meta {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .meta .label {
+            color: #64748b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+        }
+
+        .meta .value {
+            color: #0ea5e9;
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        .upload-area {
+            border: 2px dashed #334155;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            margin-bottom: 16px;
+        }
+
+        .upload-area:hover { border-color: #0ea5e9; }
+        .upload-area .icon { font-size: 32px; margin-bottom: 8px; }
+        .upload-area p { color: #64748b; font-size: 13px; }
+        .upload-area input[type="file"] { display: none; }
+
+        .file-name {
+            color: #0ea5e9;
+            margin-top: 6px;
+            font-size: 12px;
+            min-height: 16px;
+        }
+
+        .result {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .result.success { border-color: #16a34a; color: #86efac; }
+        .result.error { border-color: #dc2626; color: #fca5a5; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/dashboard" class="navbar-brand">
+            Attendance System <span>Admin</span>
+        </a>
+        <div class="navbar-links">
+            <a href="/dashboard" class="{{ 'active' if request.endpoint == 'dashboard' }}">
+                Dashboard
+            </a>
+            <a href="/students" class="{{ 'active' if request.endpoint == 'students' }}">
+                Students
+            </a>
+            <a href="/events" class="{{ 'active' if request.endpoint == 'events' }}">
+                Events
+            </a>
+            <a href="/absences" class="{{ 'active' if request.endpoint == 'absences' }}">
+                Reports
+            </a>
+            <a href="/reports" class="{{ 'active' if request.endpoint == 'reports' }}">
+                Options
+            </a>
+            <a href="/backup" class="{{ 'active' if request.endpoint == 'backup' }}">
+                Backup
+            </a>
+            <a href="/admin/logout" class="logout-btn">
+                Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="header">
+        <div>
+            <h1>Backup and Restore</h1>
+            <p>Export a full snapshot of the system and import it back when needed</p>
+        </div>
+        <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <h2>Export Full Backup</h2>
+            <p>
+                Download a JSON snapshot that includes colleges, courses, students,
+                stations, events, and attendance logs. Absences and present records are
+                restored from the underlying attendance logs.
+            </p>
+
+            <div class="meta-grid">
+                <div class="meta">
+                    <div class="label">Colleges</div>
+                    <div class="value">{{ colleges_total }}</div>
+                </div>
+                <div class="meta">
+                    <div class="label">Courses</div>
+                    <div class="value">{{ courses_total }}</div>
+                </div>
+                <div class="meta">
+                    <div class="label">Students</div>
+                    <div class="value">{{ students_total }}</div>
+                </div>
+                <div class="meta">
+                    <div class="label">Stations</div>
+                    <div class="value">{{ stations_total }}</div>
+                </div>
+                <div class="meta">
+                    <div class="label">Events</div>
+                    <div class="value">{{ events_total }}</div>
+                </div>
+                <div class="meta">
+                    <div class="label">Logs</div>
+                    <div class="value">{{ logs_total }}</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <a href="/api/backup/export" class="btn btn-primary">Download Backup JSON</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Import Backup</h2>
+            <p>
+                Upload a JSON backup created by this system. The import uses the saved
+                primary keys, so it can restore matching records without changing their IDs.
+            </p>
+
+            <div class="upload-area" onclick="document.getElementById('backupFile').click()">
+                <div class="icon">📦</div>
+                <p>Click to choose a JSON backup file</p>
+                <div class="file-name" id="backupFileName"></div>
+                <input type="file" id="backupFile" accept=".json" onchange="handleBackupSelect(this)">
+            </div>
+
+            <button class="btn btn-warning" onclick="restoreBackup()">Import Backup</button>
+
+            <div class="result" id="backupResult"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Notes</h2>
+        <p>
+            Use export first before making database changes. Importing a backup is best
+            used to restore the same system schema on another machine or after a reset.
+        </p>
+    </div>
+
+    <script>
+        function handleBackupSelect(input) {
+            const fileName = document.getElementById('backupFileName');
+            fileName.textContent = input.files[0] ? input.files[0].name : '';
+        }
+
+        function showBackupResult(message, type) {
+            const box = document.getElementById('backupResult');
+            box.className = `result ${type}`;
+            box.textContent = message;
+            box.style.display = 'block';
+        }
+
+        async function restoreBackup() {
+            const input = document.getElementById('backupFile');
+            const file = input.files[0];
+
+            if (!file) {
+                showBackupResult('Please choose a JSON backup file first.', 'error');
+                return;
+            }
+
+            const ok = confirm('Import this backup? This will merge the uploaded data into the current database.');
+            if (!ok) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/backup/import', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showBackupResult(data.message, 'success');
+                if (window.showToast) {
+                    showToast(data.message, 'success');
+                }
+            } else {
+                showBackupResult(data.message || 'Import failed.', 'error');
+                if (window.showToast) {
+                    showToast(data.message || 'Import failed.', 'error');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
