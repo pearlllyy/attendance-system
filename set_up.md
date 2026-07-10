@@ -68,6 +68,8 @@
 
 - Start the system by double-clicking `launch-windows.bat`.
 
+- Windows will ask for Administrator permission the first time. Click Yes. This is required so phones on the same Wi-Fi can reach the app. Podman runs inside WSL2, and Windows must forward port 5000 from your PC to the Podman machine for mobile access to work.
+
 - If the app fails with `entrypoint.sh: No such file or directory`, pull the latest project files and run `launch-windows.bat` again. That error usually means a shell script was saved with Windows line endings; the build now normalizes those automatically.
 
 - To stop the system, double-click `stop-windows.bat`.

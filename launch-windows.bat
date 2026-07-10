@@ -1,6 +1,15 @@
 @echo off
 setlocal
 
+:: Port forwarding for mobile access requires Administrator on Windows.
+net session >nul 2>&1
+if errorlevel 1 (
+    echo Administrator permission is required so mobile devices can connect.
+    echo Please click Yes on the Windows security prompt.
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs -WorkingDirectory '%~dp0.'"
+    exit /b
+)
+
 set "PROJECT_DIR=%~dp0"
 set "NETWORK_NAME=attendance-system-net"
 set "APP_IMAGE=attendance-system-app"
@@ -74,7 +83,7 @@ exit /b 1
 
 :db_ready
 echo Starting the app...
-podman run -d --name "%APP_CONTAINER%" --network "%NETWORK_NAME%" -e MYSQL_HOST=db -p 5000:5000 -v "%PROJECT_DIR%:/app" "%APP_IMAGE%"
+podman run -d --name "%APP_CONTAINER%" --network "%NETWORK_NAME%" -e MYSQL_HOST=db -p 0.0.0.0:5000:5000 -v "%PROJECT_DIR%:/app" "%APP_IMAGE%"
 if errorlevel 1 (
     echo Failed to start the app container.
     pause
@@ -93,6 +102,12 @@ pause
 exit /b 1
 
 :app_ready
+call :setup_lan_access
+if errorlevel 1 (
+    echo Warning: Mobile device access could not be configured automatically.
+    echo Right-click launch-windows.bat and choose Run as administrator, then try again.
+)
+
 start "" "%APP_URL%"
 echo.
 echo Attendance system started.
@@ -101,14 +116,28 @@ echo On this computer:
 echo   https://localhost:5000
 echo.
 echo On mobile devices (same Wi-Fi network):
-powershell -NoProfile -Command "& { $ips = @(Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -and $_.DefaultIPGateway } | ForEach-Object { $_.IPAddress } | Where-Object { $_ -match '^\d+\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^169\.254\.' } | Sort-Object -Unique); if ($ips.Count -eq 0) { Write-Host '  Could not detect a network IP address.'; Write-Host '  Run ipconfig and open: https://YOUR_IP:5000/scanner' } else { foreach ($ip in $ips) { Write-Host ('  https://{0}:5000/scanner' -f $ip) } } }"
+powershell -NoProfile -Command "& { $ips = @(Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -and $_.DefaultIPGateway } | ForEach-Object { $_.IPAddress } | Where-Object { $_ -match '^\d+\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^169\.254\.' } | Sort-Object -Unique); if ($ips.Count -eq 0) { Write-Host '  Could not detect a network IP address.'; Write-Host '  Run ipconfig and open: https://YOUR_IP:5000' } else { foreach ($ip in $ips) { Write-Host ('  https://{0}:5000' -f $ip) } } }"
 echo.
 echo Your phone may warn about the security certificate the first time.
 echo You can continue for local use.
 echo.
-echo If a phone cannot connect, allow port 5000 through Windows Firewall.
-echo.
 echo Opened %APP_URL% in your browser.
 echo Press any key to exit this window. The app will continue running in the background.
 pause >nul
-exit
+exit /b 0
+
+:setup_lan_access
+set "WSL_IP="
+for /f "tokens=1" %%i in ('podman machine ssh hostname -I 2^>nul') do set "WSL_IP=%%i"
+if not defined WSL_IP (
+    for /f "tokens=1" %%i in ('wsl hostname -I 2^>nul') do set "WSL_IP=%%i"
+)
+if not defined WSL_IP exit /b 1
+
+netsh interface portproxy delete v4tov4 listenport=5000 listenaddress=0.0.0.0 >nul 2>nul
+netsh interface portproxy add v4tov4 listenport=5000 listenaddress=0.0.0.0 connectport=5000 connectaddress=%WSL_IP% >nul 2>nul
+if errorlevel 1 exit /b 1
+
+netsh advfirewall firewall delete rule name="Attendance System Port 5000" >nul 2>nul
+netsh advfirewall firewall add rule name="Attendance System Port 5000" dir=in action=allow protocol=TCP localport=5000 >nul 2>nul
+exit /b 0

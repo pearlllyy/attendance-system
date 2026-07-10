@@ -10,7 +10,7 @@ services:
     volumes:
       - ./:/app:Z
     ports:
-      - "5000:5000"
+      - "0.0.0.0:5000:5000"
 
   db:
     image: docker.io/library/mariadb:11.4
