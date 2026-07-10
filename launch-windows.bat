@@ -109,4 +109,6 @@ echo.
 echo If a phone cannot connect, allow port 5000 through Windows Firewall.
 echo.
 echo Opened %APP_URL% in your browser.
-timeout /t 3 /nobreak >nul
+echo Press any key to exit this window. The app will continue running in the background.
+pause >nul
+exit
