@@ -358,22 +358,22 @@
             Attendance System <span>Admin</span>
         </a>
         <div class="navbar-links">
-            <a href="/dashboard">
+            <a href="/dashboard" class="{{ 'active' if request.endpoint == 'dashboard' }}">
                 Dashboard
             </a>
-            <a href="/students">
+            <a href="/students" class="{{ 'active' if request.endpoint == 'students' }}">
                 Students
             </a>
-            <a href="/events">
+            <a href="/events" class="{{ 'active' if request.endpoint == 'events' }}">
                 Events
             </a>
-            <a href="/absences">
+            <a href="/absences" class="{{ 'active' if request.endpoint == 'absences' }}">
                 Reports
             </a>
-            <a href="/reports">
+            <!-- <a href="/reports" class="{{ 'active' if request.endpoint == 'reports' }}">
                 Options
-            </a>
-            <a href="/backup">
+            </a> -->
+            <a href="/backup" class="{{ 'active' if request.endpoint == 'backup' }}">
                 Backup
             </a>
             <a href="/admin/logout" class="logout-btn">

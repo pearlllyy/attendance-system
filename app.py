@@ -533,39 +533,6 @@ def absence_summary():
 
     return jsonify({'total_events': total_events, 'students': students})
 
-@app.route('/reports')
-@login_required
-def reports():
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT * FROM colleges ORDER BY college_code")
-    colleges = cursor.fetchall()
-    cursor.execute("""
-        SELECT c.*, col.college_code
-        FROM courses c
-        JOIN colleges col ON c.college_id = col.college_id
-        ORDER BY col.college_id, c.course_id
-    """)
-    courses = cursor.fetchall()
-    cursor.execute("SELECT event_id, event_name, event_date FROM events ORDER BY event_date DESC")
-    events = cursor.fetchall()
-    cursor.execute("""
-        SELECT a.log_id, s.full_name, s.student_id, s.section, s.year_level,
-               c.course_code, col.college_code,
-               e.event_name, e.event_date,
-               a.time_in, a.time_out, a.status
-        FROM attendance_logs a
-        JOIN students s   ON a.student_id = s.student_id
-        JOIN courses c    ON s.course_id  = c.course_id
-        JOIN colleges col ON c.college_id = col.college_id
-        JOIN events e     ON a.event_id   = e.event_id
-        ORDER BY e.event_date DESC, a.time_in DESC
-    """)
-    logs = cursor.fetchall()
-    cursor.close()
-    db.close()
-    return render_template('reports.html', logs=logs, colleges=colleges,
-                           courses=courses, events=events)
 
 
 @app.route('/backup')
@@ -645,61 +612,6 @@ def import_backup():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
-
-@app.route('/api/reports')
-@login_required
-def reports_api():
-    event_id   = request.args.get('event_id')
-    college_id = request.args.get('college_id')
-    course_id  = request.args.get('course_id')
-    status     = request.args.get('status')
-    section    = request.args.get('section')
-    year_level = request.args.get('year_level')
-
-    query = """
-        SELECT a.log_id, s.full_name, s.student_id, s.section, s.year_level,
-               c.course_code, col.college_code, e.event_name,
-               DATE_FORMAT(e.event_date, '%Y-%m-%d') as event_date,
-               TIME_FORMAT(a.time_in,  '%H:%i:%s') as time_in,
-               TIME_FORMAT(a.time_out, '%H:%i:%s') as time_out,
-               a.status
-        FROM attendance_logs a
-        JOIN students s   ON a.student_id = s.student_id
-        JOIN courses c    ON s.course_id  = c.course_id
-        JOIN colleges col ON c.college_id = col.college_id
-        JOIN events e     ON a.event_id   = e.event_id
-        WHERE 1=1
-    """
-    params = []
-
-    if event_id:
-        query += " AND a.event_id = %s"
-        params.append(event_id)
-    if college_id:
-        query += " AND col.college_id = %s"
-        params.append(college_id)
-    if course_id:
-        query += " AND c.course_id = %s"
-        params.append(course_id)
-    if status:
-        query += " AND a.status = %s"
-        params.append(status)
-    if section:
-        query += " AND s.section = %s"
-        params.append(section)
-    if year_level:
-        query += " AND s.year_level = %s"
-        params.append(year_level)
-
-    query += " ORDER BY e.event_date DESC, a.time_in DESC"
-
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute(query, params)
-    logs = cursor.fetchall()
-    cursor.close()
-    db.close()
-    return jsonify(logs)
 
 @app.route('/events')
 @login_required
