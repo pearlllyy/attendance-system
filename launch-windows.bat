@@ -1,14 +1,5 @@
 @echo off
-setlocal
-
-:: Port forwarding for mobile access requires Administrator on Windows.
-net session >nul 2>&1
-if errorlevel 1 (
-    echo Administrator permission is required so mobile devices can connect.
-    echo Please click Yes on the Windows security prompt.
-    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs -WorkingDirectory '%~dp0.'"
-    exit /b
-)
+setlocal EnableDelayedExpansion
 
 set "PROJECT_DIR=%~dp0"
 set "NETWORK_NAME=attendance-system-net"
@@ -104,8 +95,9 @@ exit /b 1
 :app_ready
 call :setup_lan_access
 if errorlevel 1 (
-    echo Warning: Mobile device access could not be configured automatically.
-    echo Right-click launch-windows.bat and choose Run as administrator, then try again.
+    echo.
+    echo Warning: Mobile device access could not be configured.
+    echo Click Yes when Windows asks for Administrator permission, then run launch-windows.bat again.
 )
 
 start "" "%APP_URL%"
@@ -116,7 +108,7 @@ echo On this computer:
 echo   https://localhost:5000
 echo.
 echo On mobile devices (same Wi-Fi network):
-powershell -NoProfile -Command "& { $ips = @(Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -and $_.DefaultIPGateway } | ForEach-Object { $_.IPAddress } | Where-Object { $_ -match '^\d+\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^169\.254\.' } | Sort-Object -Unique); if ($ips.Count -eq 0) { Write-Host '  Could not detect a network IP address.'; Write-Host '  Run ipconfig and open: https://YOUR_IP:5000' } else { foreach ($ip in $ips) { Write-Host ('  https://{0}:5000' -f $ip) } } }"
+powershell -NoProfile -Command "& { $ips = @(Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -and $_.DefaultIPGateway } | ForEach-Object { $_.IPAddress } | Where-Object { $_ -match '^\d+\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^169\.254\.' } | Sort-Object -Unique); if ($ips.Count -eq 0) { Write-Host '  Could not detect a network IP address.'; Write-Host '  Run ipconfig and open: https://YOUR_IP:5000/scanner' } else { foreach ($ip in $ips) { Write-Host ('  https://{0}:5000/scanner' -f $ip) } } }"
 echo.
 echo Your phone may warn about the security certificate the first time.
 echo You can continue for local use.
@@ -134,10 +126,31 @@ if not defined WSL_IP (
 )
 if not defined WSL_IP exit /b 1
 
+fltmc >nul 2>&1
+if errorlevel 1 goto setup_lan_access_elevated
+
 netsh interface portproxy delete v4tov4 listenport=5000 listenaddress=0.0.0.0 >nul 2>nul
 netsh interface portproxy add v4tov4 listenport=5000 listenaddress=0.0.0.0 connectport=5000 connectaddress=%WSL_IP% >nul 2>nul
 if errorlevel 1 exit /b 1
 
 netsh advfirewall firewall delete rule name="Attendance System Port 5000" >nul 2>nul
 netsh advfirewall firewall add rule name="Attendance System Port 5000" dir=in action=allow protocol=TCP localport=5000 >nul 2>nul
+exit /b 0
+
+:setup_lan_access_elevated
+set "SETUP_SCRIPT=%TEMP%\attendance-lan-setup.bat"
+(
+    echo @echo off
+    echo netsh interface portproxy delete v4tov4 listenport=5000 listenaddress=0.0.0.0
+    echo netsh interface portproxy add v4tov4 listenport=5000 listenaddress=0.0.0.0 connectport=5000 connectaddress=%WSL_IP%
+    echo netsh advfirewall firewall delete rule name="Attendance System Port 5000"
+    echo netsh advfirewall firewall add rule name="Attendance System Port 5000" dir=in action=allow protocol=TCP localport=5000
+) > "%SETUP_SCRIPT%"
+echo.
+echo Windows needs Administrator permission so phones can connect.
+echo Click Yes on the security prompt.
+powershell -NoProfile -Command "Start-Process -FilePath '%SETUP_SCRIPT%' -Verb RunAs -Wait"
+set "SETUP_EXIT=!ERRORLEVEL!"
+del "%SETUP_SCRIPT%" >nul 2>nul
+if not "!SETUP_EXIT!"=="0" exit /b 1
 exit /b 0
