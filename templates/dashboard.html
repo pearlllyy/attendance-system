@@ -51,9 +51,14 @@
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: repeat(3, minmax(140px, 1fr)) minmax(320px, 2fr);
             gap: 16px;
             margin-bottom: 28px;
+        }
+
+        @media (max-width: 900px) {
+            .stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+            .college-chart { grid-column: 1 / -1; }
         }
 
         .stat-card {
@@ -72,14 +77,51 @@
         }
 
         .stat-card .value {
-            font-size: 28px;
+            font-size: 40px;
             font-weight: 700;
-            margin-top: 6px;
+            margin-top: 25px;
+        }
+
+        .stat-card .percentage {
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-left: 5px;
         }
 
         .value.present { color: #22c55e; }
         .value.late    { color: #f59e0b; }
         .value.total   { color: #0ea5e9; }
+
+        .college-chart {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 0;
+        }
+
+        .college-chart h2 {
+            color: #94a3b8;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+        }
+
+        .college-bar-row {
+            display: grid;
+            grid-template-columns: 72px 1fr auto;
+            align-items: center;
+            gap: 12px;
+            margin-top: 3px;
+            font-size: 13px;
+        }
+
+        .college-bar-label { color: #cbd5e1; font-weight: 600; }
+        .college-bar-track { height: 10px; background: #0f172a; border-radius: 999px; overflow: hidden; }
+        .college-bar-fill { height: 100%; width: 0; background: #0ea5e9; border-radius: inherit; transition: width 0.2s ease; }
+        .college-bar-value { color: #94a3b8; min-width: 78px; text-align: right; }
 
         .filters {
             background: #1e293b;
@@ -230,42 +272,14 @@
         </div>
     </div> -->
 
-    <!-- Stats -->
-    <div class="stats">
-        <div class="stat-card">
-            <div class="label">Total Scans</div>
-            <div class="value total">{{ logs | length }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="label">Present</div>
-            <div class="value present">
-                {{ logs | selectattr('status', 'equalto', 'Present') | list | length }}
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="label">Late</div>
-            <div class="value late">
-                {{ logs | selectattr('status', 'equalto', 'Late') | list | length }}
-            </div>
-        </div>
-        {% for college in colleges %}
-        <div class="stat-card">
-            <div class="label">{{ college.college_code }}</div>
-            <div class="value total">
-                {{ logs | selectattr('college_code', 'equalto', college.college_code) | list | length }}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <!-- Filters -->
+    <!-- Filter Options -->
     <div class="filters">
-        <div class="filter-group">
+        <!-- <div class="filter-group">
             <label>Search Name / ID</label>
             <input type="text" id="search"
                 placeholder="e.g. Juan or 2023-0001"
                 oninput="filterTable()">
-        </div>
+        </div> -->
         <div class="filter-group">
             <label>Event</label>
             <select id="filterEvent" onchange="filterTable()">
@@ -318,6 +332,41 @@
         </div>
     </div>
 
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="label">Expected Scans</div>
+            <div class="value total"><span id="expectedScans">{{ students_total * (events | length) }}</span></div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Total Scans</div>
+            <div class="value present"><span id="totalScans">{{ logs | length }}</span><span class="percentage" id="totalScansPercentage">0%</span></div>
+        </div>
+        <!-- <div class="stat-card">
+            <div class="label">Present</div>
+            <div class="value present">
+                {{ logs | selectattr('status', 'equalto', 'Present') | list | length }}
+            </div>
+        </div> -->
+        <div class="stat-card">
+            <div class="label">Absents</div>
+            <div class="value late"><span id="absentScans">{{ (students_total * (events | length)) - (logs | length) }}</span><span class="percentage" id="absentPercentage">0%</span></div>
+        </div>
+        <div class="college-chart">
+        <h2>Scans by College</h2>
+        {% for college in colleges %}
+        <div class="college-bar-row">
+            <span class="college-bar-label">{{ college.college_code }}</span>
+            <div class="college-bar-track"><div class="college-bar-fill" data-college-bar="{{ college.college_code }}"></div></div>
+            <span class="college-bar-value"><span data-college-stat="{{ college.college_code }}">{{ logs | selectattr('college_code', 'equalto', college.college_code) | list | length }}</span> <span data-college-percentage="{{ college.college_code }}">0%</span></span>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+
+    <!-- Filters -->
+    
     <p id="lastUpdated" style="color:#475569; font-size:12px; margin-bottom:8px;">
         Last updated: —
     </p>
@@ -337,7 +386,6 @@
                     <th>Event</th>
                     <th>Time In</th>
                     <th>Time Out</th>
-                    <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -355,11 +403,6 @@
                         <td>{{ log.event_name }}</td>
                         <td>{{ log.time_in }}</td>
                         <td>{{ log.time_out if log.time_out else '—' }}</td>
-                        <td>
-                            <span class="badge badge-{{ log.status | lower }}">
-                                {{ log.status }}
-                            </span>
-                        </td>
                         <td>
                             <button class="btn btn-danger"
                                 style="padding:5px 10px; font-size:12px;"
@@ -380,14 +423,19 @@
 
     <script src="/static/script.js" defer></script>
     <script>
+        const students = {{ students | tojson }};
+        const events = {{ events | tojson }};
+
         function filterTable() {
-            const search  = document.getElementById('search').value.toLowerCase();
+            const search  = (document.getElementById('search')?.value || '').toLowerCase();
             const event   = document.getElementById('filterEvent').value.toLowerCase();
             const college = document.getElementById('filterCollege').value.toLowerCase();
             const section = document.getElementById('filterSection').value.toUpperCase();
             const year    = document.getElementById('filterYear').value;
             const status  = document.getElementById('filterStatus').value.toLowerCase();
 
+            const visibleRows = [];
+            const matchingScanRows = [];
             document.querySelectorAll('#tableBody tr').forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 12) return;
@@ -401,10 +449,60 @@
                 const matchYear    = year    === '' || cells[5].textContent.trim() === year;
                 const matchStatus  = status  === '' || cells[10].textContent.toLowerCase().trim().includes(status);
 
-                row.style.display = (matchSearch && matchEvent && matchCollege &&
-                                     matchSection && matchYear && matchStatus) ? '' : 'none';
+                const matchesAttendanceScope = matchSearch && matchEvent && matchCollege &&
+                                               matchSection && matchYear;
+                const isMatch = matchesAttendanceScope && matchStatus;
+                row.style.display = isMatch ? '' : 'none';
+                if (isMatch) visibleRows.push(row);
+                if (matchesAttendanceScope) matchingScanRows.push(row);
+            });
+            updateStats(visibleRows, matchingScanRows, { search, event, college, section, year });
+        }
+
+        function updateStats(rows, matchingScanRows, filters) {
+            const matchingStudents = students.filter(student =>
+                (filters.search === '' || String(student.student_id).toLowerCase().includes(filters.search) ||
+                    String(student.full_name).toLowerCase().includes(filters.search)) &&
+                (filters.college === '' || String(student.college_code).toLowerCase() === filters.college) &&
+                (filters.section === '' || String(student.section).toUpperCase() === filters.section) &&
+                (filters.year === '' || String(student.year_level) === filters.year)
+            );
+            const matchingEvents = filters.event === ''
+                ? events.length
+                : events.filter(event => event.event_name.toLowerCase().includes(filters.event)).length;
+            const expectedScans = matchingStudents.length * matchingEvents;
+            const allExpectedScans = students.length * events.length;
+            const absentScans = Math.max(0, expectedScans - matchingScanRows.length);
+            const formatPercentage = (value, total) => total ? `${((value / total) * 100).toFixed(1)}%` : '0%';
+
+            document.getElementById('expectedScans').textContent = expectedScans;
+            const expectedPercentage = document.getElementById('expectedPercentage');
+            if (expectedPercentage) expectedPercentage.textContent = formatPercentage(expectedScans, allExpectedScans);
+            document.getElementById('absentScans').textContent = absentScans;
+            document.getElementById('absentPercentage').textContent = formatPercentage(absentScans, expectedScans);
+            document.getElementById('totalScans').textContent = rows.length;
+            document.getElementById('totalScansPercentage').textContent = formatPercentage(rows.length, expectedScans);
+
+            document.querySelectorAll('[data-college-stat]').forEach(stat => {
+                const college = stat.dataset.collegeStat.toLowerCase();
+                const collegeScans = rows.filter(row =>
+                    row.cells[3].textContent.trim().toLowerCase() === college
+                ).length;
+                const collegeExpectedScans = matchingStudents.filter(student =>
+                    String(student.college_code).toLowerCase() === college
+                ).length * matchingEvents;
+                const collegePercentage = collegeExpectedScans
+                    ? (collegeScans / collegeExpectedScans) * 100
+                    : 0;
+                stat.textContent = collegeScans;
+                document.querySelector(`[data-college-percentage="${stat.dataset.collegeStat}"]`).textContent =
+                    formatPercentage(collegeScans, collegeExpectedScans);
+                document.querySelector(`[data-college-bar="${stat.dataset.collegeStat}"]`).style.width =
+                    `${Math.min(100, collegePercentage)}%`;
             });
         }
+
+        filterTable();
 
         setInterval(async () => {
             const res  = await fetch('/api/dashboard');
@@ -437,6 +535,7 @@
                     </td>
                 </tr>
             `).join('');
+            filterTable();
         }
 
         async function deleteLog(logId, studentName) {

@@ -374,6 +374,16 @@ def dashboard():
     events = cursor.fetchall()
     cursor.execute("SELECT * FROM colleges ORDER BY college_code")
     colleges = cursor.fetchall()
+    cursor.execute("SELECT COUNT(*) AS total FROM students")
+    students_total = cursor.fetchone()['total']
+    cursor.execute("""
+        SELECT s.student_id, s.full_name, s.section, s.year_level,
+               c.course_code, col.college_code
+        FROM students s
+        JOIN courses c    ON s.course_id = c.course_id
+        JOIN colleges col ON c.college_id = col.college_id
+    """)
+    students = cursor.fetchall()
     cursor.execute("""
         SELECT a.log_id, s.full_name, s.student_id, s.section, s.year_level,
                c.course_code, col.college_code,
@@ -389,7 +399,8 @@ def dashboard():
     logs = cursor.fetchall()
     cursor.close()
     db.close()
-    return render_template('dashboard.html', logs=logs, events=events, colleges=colleges)
+    return render_template('dashboard.html', logs=logs, events=events, colleges=colleges,
+                           students_total=students_total, students=students)
 
 @app.route('/api/dashboard')
 @login_required
