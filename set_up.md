@@ -77,6 +77,9 @@
 - Open the app in your browser at:
     `https://localhost:5000`
 
+- After `launch-windows.bat` finishes, it prints the mobile scanner URL(s) to use on phones connected to the same Wi-Fi network, for example:
+    `https://192.168.1.10:5000/scanner`
+
 - The browser will warn you about the self-signed certificate the first time. You can continue for local use.
 
 - The database runs inside Podman, so XAMPP is not needed for the Windows Podman setup.

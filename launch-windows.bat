@@ -94,6 +94,19 @@ exit /b 1
 
 :app_ready
 start "" "%APP_URL%"
+echo.
 echo Attendance system started.
+echo.
+echo On this computer:
+echo   https://localhost:5000
+echo.
+echo On mobile devices (same Wi-Fi network):
+powershell -NoProfile -Command "& { $ips = @(Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -and $_.DefaultIPGateway } | ForEach-Object { $_.IPAddress } | Where-Object { $_ -match '^\d+\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^169\.254\.' } | Sort-Object -Unique); if ($ips.Count -eq 0) { Write-Host '  Could not detect a network IP address.'; Write-Host '  Run ipconfig and open: https://YOUR_IP:5000/scanner' } else { foreach ($ip in $ips) { Write-Host ('  https://{0}:5000/scanner' -f $ip) } } }"
+echo.
+echo Your phone may warn about the security certificate the first time.
+echo You can continue for local use.
+echo.
+echo If a phone cannot connect, allow port 5000 through Windows Firewall.
+echo.
 echo Opened %APP_URL% in your browser.
 timeout /t 3 /nobreak >nul
