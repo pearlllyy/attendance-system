@@ -324,6 +324,12 @@
             padding: 24px;
         }
 
+        .modal-wide {
+            width: min(100%, 720px);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -387,7 +393,11 @@
             <h1>Student Management</h1>
             <p>Add, import, and manage student records</p>
         </div>
-        <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+        <div class="header-actions">
+            <button type="button" class="btn btn-primary" onclick="openAddStudentModal()">Add Student</button>
+            <button type="button" class="btn btn-success" onclick="openImportStudentsModal()">Import Students</button>
+            <button type="button" class="btn btn-danger" onclick="deleteAllStudents()">Delete All Students</button>
+        </div>
     </div>
 
     <!-- Stats -->
@@ -406,12 +416,12 @@
         {% endfor %}
     </div>
 
-    <!-- Add Student + CSV Import -->
-    <div class="grid-2">
-
-        <!-- Manual Form -->
-        <div class="card">
-            <h2>Add Student Manually</h2>
+    <div class="modal-backdrop" id="addStudentModalBackdrop" onclick="if (event.target.id === 'addStudentModalBackdrop') closeAddStudentModal()">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addStudentModalTitle">
+            <div class="modal-header">
+                <h3 id="addStudentModalTitle">Add Student</h3>
+                <button class="modal-close" type="button" onclick="closeAddStudentModal()" aria-label="Close">&times;</button>
+            </div>
             <div class="form-group">
                 <label>Student ID</label>
                 <input type="text" id="studentId" placeholder="e.g. 2023-0001">
@@ -454,10 +464,14 @@
                 Add Student
             </button>
         </div>
+    </div>
 
-        <!-- CSV Import -->
-        <div class="card">
-            <h2>Import via CSV</h2>
+    <div class="modal-backdrop" id="importStudentsModalBackdrop" onclick="if (event.target.id === 'importStudentsModalBackdrop') closeImportStudentsModal()">
+        <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="importStudentsModalTitle">
+            <div class="modal-header">
+                <h3 id="importStudentsModalTitle">Import Students via CSV</h3>
+                <button class="modal-close" type="button" onclick="closeImportStudentsModal()" aria-label="Close">&times;</button>
+            </div>
 
             <p style="color:#64748b; font-size:13px; margin-bottom:12px;">
                 Your CSV file must follow this exact format:
@@ -638,6 +652,22 @@
 
     <script src="/static/script.js" defer></script>
     <script>
+        function openAddStudentModal() {
+            document.getElementById('addStudentModalBackdrop').style.display = 'flex';
+        }
+
+        function closeAddStudentModal() {
+            document.getElementById('addStudentModalBackdrop').style.display = 'none';
+        }
+
+        function openImportStudentsModal() {
+            document.getElementById('importStudentsModalBackdrop').style.display = 'flex';
+        }
+
+        function closeImportStudentsModal() {
+            document.getElementById('importStudentsModalBackdrop').style.display = 'none';
+        }
+
         function openEditModal() {
             document.getElementById('editModalBackdrop').style.display = 'flex';
         }
@@ -781,6 +811,33 @@
             const data = await res.json();
             if (data.success) {
                 showToast('Student deleted.', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+
+        async function deleteAllStudents() {
+            const confirmed = await confirmDialog(
+                'WARNING: This permanently deletes ALL students and ALL attendance records. This cannot be undone. Continue?'
+            );
+            if (!confirmed) return;
+
+            const password = window.prompt('Enter your admin password to confirm permanent deletion:');
+            if (password === null) return;
+            if (!password.trim()) {
+                showToast('Admin password is required.', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/students/delete-all', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.deleted_students + ' student(s) and all attendance records deleted.', 'success');
                 setTimeout(() => location.reload(), 1000);
             } else {
                 showToast(data.message, 'error');

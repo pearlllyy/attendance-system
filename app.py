@@ -814,6 +814,28 @@ def delete_student():
         cursor.close()
         db.close()
 
+@app.route('/api/students/delete-all', methods=['POST'])
+@login_required
+def delete_all_students():
+    data = request.get_json(silent=True) or {}
+    if not admin_password_matches(data.get('password') or ''):
+        return jsonify({'success': False, 'message': 'Incorrect admin password.'}), 403
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("DELETE FROM attendance_logs")
+        cursor.execute("DELETE FROM students")
+        deleted_students = cursor.rowcount
+        db.commit()
+        return jsonify({'success': True, 'deleted_students': deleted_students})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        db.close()
+
 @app.route('/api/students/import', methods=['POST'])
 @login_required
 def import_students():
