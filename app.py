@@ -902,7 +902,15 @@ def import_students():
     db = get_db()
     cursor = db.cursor()
     try:
-        stream   = io.StringIO(file.stream.read().decode('UTF-8'))
+        raw = file.stream.read()
+        try:
+            # Handles plain UTF-8 and UTF-8-with-BOM (utf-8-sig strips the BOM)
+            decoded = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            # Excel often saves CSVs as Windows-1252/ANSI instead of UTF-8.
+            # cp1252 covers ñ, é, etc. and rarely raises, so it's a safe fallback.
+            decoded = raw.decode("cp1252")
+        stream = io.StringIO(decoded, newline=None)
         reader   = csv.DictReader(stream)
         inserted = 0
         skipped  = 0
