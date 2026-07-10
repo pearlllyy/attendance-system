@@ -468,10 +468,15 @@
                 (filters.year === '' || String(student.year_level) === filters.year)
             );
             const matchingEvents = filters.event === ''
-                ? events.length
-                : events.filter(event => event.event_name.toLowerCase().includes(filters.event)).length;
-            const expectedScans = matchingStudents.length * matchingEvents;
-            const allExpectedScans = students.length * events.length;
+                ? events
+                : events.filter(event => event.event_name.toLowerCase().includes(filters.event));
+            const expectedFor = (studentList, eventList) => studentList.reduce((total, student) =>
+                total + eventList.filter(event =>
+                    !event.course_id || String(event.course_id) === String(student.course_id)
+                ).length, 0
+            );
+            const expectedScans = expectedFor(matchingStudents, matchingEvents);
+            const allExpectedScans = expectedFor(students, events);
             const absentScans = Math.max(0, expectedScans - matchingScanRows.length);
             const formatPercentage = (value, total) => total ? `${((value / total) * 100).toFixed(1)}%` : '0%';
 
@@ -488,9 +493,10 @@
                 const collegeScans = rows.filter(row =>
                     row.cells[3].textContent.trim().toLowerCase() === college
                 ).length;
-                const collegeExpectedScans = matchingStudents.filter(student =>
+                const collegeStudents = matchingStudents.filter(student =>
                     String(student.college_code).toLowerCase() === college
-                ).length * matchingEvents;
+                );
+                const collegeExpectedScans = expectedFor(collegeStudents, matchingEvents);
                 const collegePercentage = collegeExpectedScans
                     ? (collegeScans / collegeExpectedScans) * 100
                     : 0;

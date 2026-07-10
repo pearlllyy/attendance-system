@@ -119,6 +119,17 @@
             border-color: #0ea5e9;
         }
 
+        .form-group input[type="date"],
+        .form-group input[type="time"] {
+            color-scheme: light;
+        }
+
+        .form-group input[type="date"]::-webkit-calendar-picker-indicator,
+        .form-group input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(1.6);
+            cursor: pointer;
+        }
+
         /* Events Table */
         .table-wrapper {
             background: #1e293b;
@@ -258,7 +269,6 @@
             <h1>Event Management</h1>
             <p>Create and manage attendance events</p>
         </div>
-        <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
     </div>
 
     <!-- Create Event Form -->
@@ -286,7 +296,7 @@
                 <select id="eventCourse">
                     <option value="">All Courses</option>
                     {% for course in courses %}
-                        <option value="{{ course.course_id }}">{{ course.course_code }}</option>
+                        <option value="{{ course.course_id }}">{{ course.college_code }} — {{ course.course_code }}</option>
                     {% endfor %}
                 </select>
             </div>

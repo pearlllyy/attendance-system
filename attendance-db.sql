@@ -128,6 +128,8 @@ CREATE TABLE events (
     event_date     DATE         NOT NULL,
     time_in_cutoff TIME         NOT NULL,
     time_out_start TIME         NOT NULL,
+    course_id      INT          DEFAULT NULL,
+    FOREIGN KEY (course_id) REFERENCES courses(course_id),
     is_active      TINYINT      DEFAULT 0
 );
 
@@ -150,6 +152,7 @@ ALTER TABLE students       ADD INDEX (course_id);
 ALTER TABLE courses        ADD INDEX (college_id);
 ALTER TABLE attendance_logs ADD INDEX (student_id, event_id);
 ALTER TABLE events         ADD INDEX (is_active);
+ALTER TABLE events         ADD INDEX (course_id);
 
 -- ─── Colleges Data ────────────────────────────────────────
 INSERT INTO colleges (college_code, college_name) VALUES

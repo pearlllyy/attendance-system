@@ -24,6 +24,12 @@ def get_db():
         cursorclass=pymysql.cursors.DictCursor
     )
 
+def ensure_events_course_column(cursor):
+    cursor.execute("SHOW COLUMNS FROM events LIKE 'course_id'")
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE events ADD COLUMN course_id INT NULL AFTER time_out_start")
+        cursor.execute("ALTER TABLE events ADD INDEX (course_id)")
+
 def td_to_str(td):
     if hasattr(td, 'seconds'):
         total = int(td.total_seconds())
@@ -133,7 +139,7 @@ def import_backup_payload(payload):
         ('courses', ['course_id', 'course_code', 'course_name', 'major', 'college_id'], 'course_id'),
         ('students', ['student_id', 'full_name', 'course_id', 'year_level', 'section'], 'student_id'),
         ('stations', ['station_id', 'station_name', 'course_id'], 'station_id'),
-        ('events', ['event_id', 'event_name', 'event_date', 'time_in_cutoff', 'time_out_start', 'is_active'], 'event_id'),
+        ('events', ['event_id', 'event_name', 'event_date', 'time_in_cutoff', 'time_out_start', 'course_id', 'is_active'], 'event_id'),
         ('attendance_logs', ['log_id', 'student_id', 'event_id', 'station_id', 'time_in', 'time_out', 'status'], 'log_id'),
     ]
 
@@ -252,7 +258,14 @@ def scan(): # Scan function
     cursor = db.cursor()
 
     try:
-        cursor.execute("SELECT * FROM events WHERE is_active = 1 LIMIT 1")
+        ensure_events_course_column(cursor)
+        cursor.execute("""
+            SELECT e.*, c.course_code AS event_course_code
+            FROM events e
+            LEFT JOIN courses c ON e.course_id = c.course_id
+            WHERE e.is_active = 1
+            LIMIT 1
+        """)
         event = cursor.fetchone()
 
         if not event:
@@ -274,6 +287,11 @@ def scan(): # Scan function
         if student['course_id'] != session['course_id']:
             return jsonify({'success': False,
                 'message': f"Wrong station! This student belongs to {student['course_code']}"
+            })
+
+        if event.get('course_id') and student['course_id'] != event['course_id']:
+            return jsonify({'success': False,
+                'message': f"This event is only for {event['event_course_code']} students."
             })
 
         now          = datetime.now()
@@ -370,14 +388,15 @@ def get_stations():
 def dashboard():
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT event_id, event_name, event_date FROM events ORDER BY event_date DESC")
+    ensure_events_course_column(cursor)
+    cursor.execute("SELECT event_id, event_name, event_date, course_id FROM events ORDER BY event_date DESC")
     events = cursor.fetchall()
     cursor.execute("SELECT * FROM colleges ORDER BY college_code")
     colleges = cursor.fetchall()
     cursor.execute("SELECT COUNT(*) AS total FROM students")
     students_total = cursor.fetchone()['total']
     cursor.execute("""
-        SELECT s.student_id, s.full_name, s.section, s.year_level,
+        SELECT s.student_id, s.full_name, s.course_id, s.section, s.year_level,
                c.course_code, col.college_code
         FROM students s
         JOIN courses c    ON s.course_id = c.course_id
@@ -460,16 +479,19 @@ def absences_api():
 
     db = get_db()
     cursor = db.cursor()
+    ensure_events_course_column(cursor)
 
     query = """
         SELECT s.student_id, s.full_name, s.section, s.year_level,
-               c.course_code, col.college_code
+               c.course_code, col.college_code,
+               CASE WHEN a.log_id IS NULL THEN 'Absent' ELSE 'Present' END as status
         FROM students s
         JOIN courses c    ON s.course_id  = c.course_id
         JOIN colleges col ON c.college_id = col.college_id
-        WHERE s.student_id NOT IN (
-            SELECT student_id FROM attendance_logs WHERE event_id = %s
-        )
+        JOIN events e     ON e.event_id = %s
+        LEFT JOIN attendance_logs a ON a.student_id = s.student_id
+                                   AND a.event_id = e.event_id
+        WHERE (e.course_id IS NULL OR e.course_id = s.course_id)
     """
     params = [event_id]
 
@@ -505,22 +527,30 @@ def absence_summary():
     db = get_db()
     cursor = db.cursor()
 
-    cursor.execute("SELECT COUNT(*) as total FROM events")
-    total_events = cursor.fetchone()['total']
-
+    ensure_events_course_column(cursor)
     query = """
         SELECT s.student_id, s.full_name, s.section, s.year_level,
                c.course_code, col.college_code,
                COUNT(a.log_id) as attended,
-               %s - COUNT(a.log_id) as absences,
-               %s as total_events
+               COUNT(e.event_id) - COUNT(a.log_id) as absences,
+               COUNT(e.event_id) as total_events,
+               COALESCE(
+                   GROUP_CONCAT(
+                       DISTINCT CASE WHEN a.log_id IS NULL THEN CONCAT(e.event_name, ' (', e.event_date, ')') END
+                       ORDER BY e.event_date
+                       SEPARATOR '\n'
+                   ),
+                   ''
+               ) as absent_events
         FROM students s
         JOIN courses c    ON s.course_id  = c.course_id
         JOIN colleges col ON c.college_id = col.college_id
+        LEFT JOIN events e ON e.course_id IS NULL OR e.course_id = s.course_id
         LEFT JOIN attendance_logs a ON s.student_id = a.student_id
+                                  AND a.event_id = e.event_id
         WHERE 1=1
     """
-    params = [total_events, total_events]
+    params = []
 
     if college_id:
         query += " AND col.college_id = %s"
@@ -539,6 +569,7 @@ def absence_summary():
 
     cursor.execute(query, params)
     students = cursor.fetchall()
+    total_events = students[0]['total_events'] if students else 0
     cursor.close()
     db.close()
 
@@ -629,25 +660,45 @@ def import_backup():
 def events():
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT * FROM events ORDER BY event_date DESC")
+    ensure_events_course_column(cursor)
+    cursor.execute("""
+        SELECT e.*, c.course_code
+        FROM events e
+        LEFT JOIN courses c ON e.course_id = c.course_id
+        ORDER BY e.event_date DESC
+    """)
     events = cursor.fetchall()
+    cursor.execute("""
+        SELECT c.course_id, c.course_code, col.college_code
+        FROM courses c
+        JOIN colleges col ON c.college_id = col.college_id
+        ORDER BY col.college_code, c.course_code
+    """)
+    courses = cursor.fetchall()
     cursor.close()
     db.close()
-    return render_template('events.html', events=events)
+    return render_template('events.html', events=events, courses=courses)
 
 @app.route('/api/events/create', methods=['POST'])
 @login_required
 def create_event():
-    data = request.get_json()
+    data = request.get_json() or {}
     db = get_db()
     cursor = db.cursor()
     try:
+        ensure_events_course_column(cursor)
+        course_id = data.get('course_id') or None
+        if course_id is not None:
+            cursor.execute("SELECT course_id FROM courses WHERE course_id = %s", (course_id,))
+            if not cursor.fetchone():
+                return jsonify({'success': False, 'message': 'Selected course was not found.'}), 400
+
         cursor.execute("""
-            INSERT INTO events (event_name, event_date, time_in_cutoff, time_out_start)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO events (event_name, event_date, time_in_cutoff, time_out_start, course_id)
+            VALUES (%s, %s, %s, %s, %s)
         """, (
             data['event_name'], data['event_date'],
-            data['time_in_cutoff'], data['time_out_start']
+            data['time_in_cutoff'], data['time_out_start'], course_id
         ))
         db.commit()
         return jsonify({'success': True})

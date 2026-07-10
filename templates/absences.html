@@ -69,8 +69,8 @@
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
+            padding: 24px 24px 16px 24px;
+            margin-bottom: 20px;
         }
         .filter-card h2 {
             font-size: 14px;
@@ -78,7 +78,7 @@
             color: #94a3b8;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         .filter-grid {
             display: grid;
@@ -105,13 +105,19 @@
             transition: border-color 0.2s;
         }
         .filter-group select:focus { border-color: #0ea5e9; }
-        .filter-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .filter-actions { margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap; }
         .summary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: 1fr 1fr 3fr;
             gap: 16px;
             margin-bottom: 24px;
         }
+        .summary1 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }        
         .summary-card {
             background: #1e293b;
             border: 1px solid #334155;
@@ -126,8 +132,9 @@
             font-weight: 600;
         }
         .summary-card .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
-        .value.absent { color: #dc2626; }
+        .value.absent { color: #ff4545; }
         .value.total  { color: #0ea5e9; }
+        .value.present { color: #63ec5e; }
         .table-wrapper {
             background: #1e293b;
             border: 1px solid #334155;
@@ -158,11 +165,22 @@
             letter-spacing: 0.5px;
         }
         .badge-absent  { background: #450a0a; color: #dc2626; border: 1px solid #dc2626; }
+        .badge-present { background: #052e16; color: #22c55e; border: 1px solid #16a34a; }
         .badge-course  { background: #0c1a2e; color: #0ea5e9; border: 1px solid #0369a1; }
         .badge-college { background: #1a0c2e; color: #a78bfa; border: 1px solid #7c3aed; }
         .badge-high    { background: #450a0a; color: #dc2626; border: 1px solid #dc2626; }
         .badge-medium  { background: #1c1009; color: #f59e0b; border: 1px solid #d97706; }
         .badge-low     { background: #052e16; color: #22c55e; border: 1px solid #16a34a; }
+        .absence-chip {
+            cursor: pointer;
+            font: inherit;
+            outline: none;
+            background: transparent;
+            border: none;
+            color: inherit;
+        }
+        
+
         .empty { text-align: center; padding: 48px; color: #475569; font-size: 14px; }
         .hint  { text-align: center; padding: 48px; color: #475569; font-size: 14px; }
     </style>
@@ -198,16 +216,16 @@
     </nav>
     <div class="header">
         <div>
-            <h1>Absence Tracker</h1>
+            <h1>Reports</h1>
             <p>Track and monitor student absences</p>
         </div>
-        <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('perEvent', this)">Per Event</button>
+            <button class="tab"        onclick="switchTab('summary', this)">Absence Count</button>
+        </div>
     </div>
 
-    <div class="tabs">
-        <button class="tab active" onclick="switchTab('perEvent', this)">Per Event</button>
-        <button class="tab"        onclick="switchTab('summary', this)">Absence Count</button>
-    </div>
+
 
     <!-- ── Tab 1: Per Event ──────────────────────────────── -->
     <div class="tab-content active" id="tab-perEvent">
@@ -216,7 +234,7 @@
             <div class="filter-grid">
                 <div class="filter-group">
                     <label>Event</label>
-                    <select id="filterEvent">
+                    <select id="filterEvent" onchange="loadAbsences(true)">
                         <option value="">— Select an Event —</option>
                         {% for event in events %}
                             <option value="{{ event.event_id }}">
@@ -227,7 +245,7 @@
                 </div>
                 <div class="filter-group">
                     <label>College</label>
-                    <select id="filterCollege">
+                    <select id="filterCollege" onchange="loadAbsences(true)">
                         <option value="">All Colleges</option>
                         {% for college in colleges %}
                             <option value="{{ college.college_id }}">
@@ -238,7 +256,7 @@
                 </div>
                 <div class="filter-group">
                     <label>Course</label>
-                    <select id="filterCourse">
+                    <select id="filterCourse" onchange="loadAbsences(true)">
                         <option value="">All Courses</option>
                         {% for course in courses %}
                             <option value="{{ course.course_id }}">
@@ -249,7 +267,7 @@
                 </div>
                 <div class="filter-group">
                     <label>Section</label>
-                    <select id="filterSection">
+                    <select id="filterSection" onchange="loadAbsences(true)">
                         <option value="">All Sections</option>
                         <option value="A">A</option>
                         <option value="B">B</option>
@@ -259,7 +277,7 @@
                 </div>
                 <div class="filter-group">
                     <label>Year Level</label>
-                    <select id="filterYear">
+                    <select id="filterYear" onchange="loadAbsences(true)">    
                         <option value="">All Years</option>
                         <option value="1">1st Year</option>
                         <option value="2">2nd Year</option>
@@ -267,22 +285,26 @@
                         <option value="4">4th Year</option>
                     </select>
                 </div>
+                <div class="filter-group filter-actions">
+                    <button class="btn btn-success" onclick="exportCSV('perEvent')">Export CSV</button>
+                </div>
             </div>
-            <div class="filter-actions">
-                <button class="btn btn-primary" onclick="loadAbsences()">Apply Filters</button>
-                <button class="btn btn-success" onclick="exportCSV('perEvent')">Export CSV</button>
-            </div>
+
         </div>
 
         <div class="summary">
-            <div class="summary-card">
+            <div class="summary-card sum">
+                <div class="label">Total Present</div>
+                <div class="value present" id="presentCount">—</div>
+            </div>
+            <div class="summary-card sum">
                 <div class="label">Total Absent</div>
                 <div class="value absent" id="absentCount">—</div>
             </div>
-            <div class="summary-card">
+            <div class="summary-card event-card">
                 <div class="label">Event</div>
                 <div class="value total" id="eventLabel"
-                    style="font-size:13px; margin-top:10px;">—</div>
+                    style="font-size:18px; margin-top:10px; color: whitesmoke;">—</div>
             </div>
         </div>
 
@@ -318,7 +340,7 @@
             <div class="filter-grid">
                 <div class="filter-group">
                     <label>College</label>
-                    <select id="summaryCollege">
+                    <select id="summaryCollege" onchange="loadSummary()">
                         <option value="">All Colleges</option>
                         {% for college in colleges %}
                             <option value="{{ college.college_id }}">
@@ -329,7 +351,7 @@
                 </div>
                 <div class="filter-group">
                     <label>Course</label>
-                    <select id="summaryCourse">
+                    <select id="summaryCourse" onchange="loadSummary()">
                         <option value="">All Courses</option>
                         {% for course in courses %}
                             <option value="{{ course.course_id }}">
@@ -340,7 +362,7 @@
                 </div>
                 <div class="filter-group">
                     <label>Section</label>
-                    <select id="summarySection">
+                    <select id="summarySection" onchange="loadSummary()">
                         <option value="">All Sections</option>
                         <option value="A">A</option>
                         <option value="B">B</option>
@@ -350,7 +372,7 @@
                 </div>
                 <div class="filter-group">
                     <label>Year Level</label>
-                    <select id="summaryYear">
+                    <select id="summaryYear" onchange="loadSummary()">
                         <option value="">All Years</option>
                         <option value="1">1st Year</option>
                         <option value="2">2nd Year</option>
@@ -358,14 +380,14 @@
                         <option value="4">4th Year</option>
                     </select>
                 </div>
+                <div class="filter-group filter-actions">
+                    <button class="btn btn-success" onclick="exportCSV('summary')">Export CSV</button>
+                </div> 
             </div>
-            <div class="filter-actions">
-                <button class="btn btn-primary" onclick="loadSummary()">Apply Filters</button>
-                <button class="btn btn-success" onclick="exportCSV('summary')">Export CSV</button>
-            </div>
+
         </div>
 
-        <div class="summary">
+        <div class="summary1">
             <div class="summary-card">
                 <div class="label">Total Students</div>
                 <div class="value total" id="summaryTotal">—</div>
@@ -412,14 +434,17 @@
             el.classList.add('active');
         }
 
-        async function loadAbsences() {
+        async function loadAbsences(silent = false) {
             const eventId  = document.getElementById('filterEvent').value;
             const college  = document.getElementById('filterCollege').value;
             const course   = document.getElementById('filterCourse').value;
             const section  = document.getElementById('filterSection').value;
             const year     = document.getElementById('filterYear').value;
 
-            if (!eventId) { showToast('Please select an event first.', 'error'); return; }
+            if (!eventId) {
+                if (!silent) showToast('Please select an event first.', 'error');
+                return;
+            }
 
             const params = new URLSearchParams();
             params.append('event_id', eventId);
@@ -432,7 +457,10 @@
             const data = await res.json();
             renderAbsenceTable(data);
 
-            document.getElementById('absentCount').textContent = data.length;
+            const presentCount = data.filter(student => student.status === 'Present').length;
+            const absentCount = data.filter(student => student.status === 'Absent').length;
+            document.getElementById('presentCount').textContent = presentCount;
+            document.getElementById('absentCount').textContent = absentCount;
             const sel = document.getElementById('filterEvent');
             document.getElementById('eventLabel').textContent =
                 sel.options[sel.selectedIndex].text;
@@ -453,7 +481,7 @@
                     <td><span class="badge badge-course">${s.course_code}</span></td>
                     <td>${s.year_level}</td>
                     <td>${s.section}</td>
-                    <td><span class="badge badge-absent">Absent</span></td>
+                    <td><span class="badge ${s.status === 'Present' ? 'badge-present' : 'badge-absent'}">${s.status}</span></td>
                 </tr>
             `).join('');
         }
@@ -487,6 +515,10 @@
                 const penalty = s.total_events > 0
                     ? Math.round((s.absences * 2)) : 0; // 1 absence = 2 hours
                 const rateClass = penalty >= 10 ? 'badge-high' : penalty >= 5 ? 'badge-medium' : 'badge-low';
+                const absentEvents = s.absent_events || '';
+                const absentTitle = absentEvents
+                    ? `title="Absent in:\n${escapeHtml(absentEvents)}"`
+                    : 'title="No absences recorded."';
                 return `
                     <tr>
                         <td>${i + 1}</td>
@@ -497,11 +529,38 @@
                         <td>${s.year_level}</td>
                         <td>${s.section}</td>
                         <td>${s.attended}</td>
-                        <td>${s.absences}</td>
+                        <td>
+                            <button
+                                type="button"
+                                class="absences-count absence-chip"
+                                ${absentTitle}
+                                data-events="${escapeHtml(absentEvents)}"
+                                onclick="showAbsentEvents(this)">
+                                ${s.absences}
+                            </button>
+                        </td>
                         <td><span class="badge ${rateClass}">${penalty} hours</span></td>
                     </tr>
                 `;
             }).join('');
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function showAbsentEvents(button) {
+            const events = button.dataset.events || '';
+            if (!events) {
+                showToast('No absent events recorded for this student.', 'info');
+                return;
+            }
+            alert(`Absent in:\n${events}`);
         }
 
         function exportCSV(tab) {
@@ -530,6 +589,15 @@
             a.click();
             URL.revokeObjectURL(url);
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+        //     const eventSelect = document.getElementById('filterEvent');
+        //     if (eventSelect && eventSelect.options.length > 1) {
+        //         eventSelect.selectedIndex = 1;
+        //         loadAbsences(true);
+        //     }
+            loadSummary();
+        });
     </script>
 </body>
 </html>
