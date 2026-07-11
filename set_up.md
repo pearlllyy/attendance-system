@@ -29,6 +29,15 @@
 
 - Make sure Podman is installed and available in your terminal.
 
+- On a headless Linux or SSH server, `podman compose` also needs the rootless Podman API socket. If you see an error about `/run/user/.../podman.sock`, start it first with:
+    `systemctl --user enable --now podman.socket`
+
+- If the socket still disappears after you log out of SSH, enable lingering once for your user so the user service can stay up:
+    `loginctl enable-linger $USER`
+
+- If your server does not use systemd user services, you can start the API manually in the current shell with:
+    `podman system service --time=0 unix:///run/user/$(id -u)/podman/podman.sock`
+
 - Use `compose.yaml` to start the app and database together. Do not build only the `Containerfile`, because that starts the Flask app without the MariaDB service.
 
 - Start the full system with:
