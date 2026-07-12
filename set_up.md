@@ -89,7 +89,7 @@
     `https://localhost:5000`
 
 - After `launch-windows.bat` finishes, it prints the mobile scanner URL(s) to use on phones connected to the same Wi-Fi network, for example:
-    `https://192.168.1.10:5000/scanner`
+    `https://192.168.1.10:5000`
 
 - The browser will warn you about the self-signed certificate the first time. You can continue for local use.
 
