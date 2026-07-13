@@ -285,6 +285,14 @@
                         <option value="4">4th Year</option>
                     </select>
                 </div>
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select id="filterStatus" onchange="loadAbsences(true)">
+                        <option value="">All</option>
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                    </select>
+                </div>
                 <div class="filter-group filter-actions">
                     <button class="btn btn-success" onclick="exportCSV('perEvent')">Export CSV</button>
                 </div>
@@ -440,6 +448,7 @@
             const course   = document.getElementById('filterCourse').value;
             const section  = document.getElementById('filterSection').value;
             const year     = document.getElementById('filterYear').value;
+            const status   = document.getElementById('filterStatus').value;
 
             if (!eventId) {
                 if (!silent) showToast('Please select an event first.', 'error');
@@ -455,7 +464,7 @@
 
             const res  = await fetch(`/api/absences?${params.toString()}`);
             const data = await res.json();
-            renderAbsenceTable(data);
+            renderAbsenceTable(data, status);
 
             const presentCount = data.filter(student => student.status === 'Present').length;
             const absentCount = data.filter(student => student.status === 'Absent').length;
@@ -466,13 +475,19 @@
                 sel.options[sel.selectedIndex].text;
         }
 
-        function renderAbsenceTable(students) {
+        function renderAbsenceTable(students, status = '') {
             const body = document.getElementById('absenceBody');
-            if (!students.length) {
-                body.innerHTML = `<tr><td colspan="8" class="empty">No absences found!</td></tr>`;
+            // Filter students by status if a status filter is selected
+            const filtered = status 
+                ? students.filter(s => s.status === status)
+                : students;
+            
+            if (!filtered.length) {
+                body.innerHTML = `<tr><td colspan="8" class="empty">No records found!</td></tr>`;
                 return;
             }
-            body.innerHTML = students.map((s, i) => `
+            
+            body.innerHTML = filtered.map((s, i) => `
                 <tr>
                     <td>${i + 1}</td>
                     <td>${s.student_id}</td>
