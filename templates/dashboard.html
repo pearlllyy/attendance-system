@@ -322,14 +322,6 @@
                 <option value="4">4th Year</option>
             </select>
         </div>
-        <div class="filter-group">
-            <label>Status</label>
-            <select id="filterStatus" onchange="filterTable()">
-                <option value="">All</option>
-                <option value="Present">Present</option>
-                <option value="Late">Late</option>
-            </select>
-        </div>
     </div>
 
 
@@ -414,7 +406,7 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="12" class="empty">No attendance records yet.</td>
+                        <td colspan="11" class="empty">No attendance records yet.</td>
                     </tr>
                 {% endif %}
             </tbody>
@@ -432,26 +424,24 @@
             const college = document.getElementById('filterCollege').value.toLowerCase();
             const section = document.getElementById('filterSection').value.toUpperCase();
             const year    = document.getElementById('filterYear').value;
-            const status  = document.getElementById('filterStatus').value.toLowerCase();
 
             const visibleRows = [];
             const matchingScanRows = [];
             document.querySelectorAll('#tableBody tr').forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length < 12) return;
+                if (cells.length < 11) return;
 
-                // # | ID | Name | College | Course | Year | Section | Event | TIn | TOut | Status | Action
+                // # | ID | Name | College | Course | Year | Section | Event | TIn | TOut | Action
                 const matchSearch  = cells[1].textContent.toLowerCase().includes(search) ||
                                      cells[2].textContent.toLowerCase().includes(search);
                 const matchEvent   = event   === '' || cells[7].textContent.toLowerCase().includes(event);
                 const matchCollege = college === '' || cells[3].textContent.toLowerCase().trim().includes(college);
                 const matchSection = section === '' || cells[6].textContent.trim() === section;
                 const matchYear    = year    === '' || cells[5].textContent.trim() === year;
-                const matchStatus  = status  === '' || cells[10].textContent.toLowerCase().trim().includes(status);
 
                 const matchesAttendanceScope = matchSearch && matchEvent && matchCollege &&
                                                matchSection && matchYear;
-                const isMatch = matchesAttendanceScope && matchStatus;
+                const isMatch = matchesAttendanceScope;
                 row.style.display = isMatch ? '' : 'none';
                 if (isMatch) visibleRows.push(row);
                 if (matchesAttendanceScope) matchingScanRows.push(row);
@@ -531,7 +521,6 @@
                     <td>${log.event_name}</td>
                     <td>${log.time_in || '—'}</td>
                     <td>${log.time_out || '—'}</td>
-                    <td><span class="badge badge-${log.status.toLowerCase()}">${log.status}</span></td>
                     <td>
                         <button class="btn btn-danger"
                             style="padding:5px 10px; font-size:12px;"
