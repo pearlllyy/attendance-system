@@ -9,9 +9,25 @@ import io
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import find_dotenv, load_dotenv, set_key
+from datetime import timezone
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+
+def get_app_timezone():
+    try:
+        offset_hours = int(os.getenv('APP_TIMEZONE_OFFSET_HOURS', '8'))
+    except ValueError:
+        offset_hours = 8
+    return timezone(timedelta(hours=offset_hours))
+
+
+APP_TIMEZONE = get_app_timezone()
+
+
+def local_now():
+    return datetime.now(APP_TIMEZONE)
 
 # ─── Database Connection ───────────────────────────────────────────
 def get_db():
@@ -116,7 +132,7 @@ def build_backup_payload():
     try:
         payload = {
             'version': 1,
-            'generated_at': datetime.now().isoformat(timespec='seconds'),
+            'generated_at': local_now().isoformat(timespec='seconds'),
             'colleges': serialize_backup_rows(fetch_backup_rows(cursor, 'colleges', 'college_id')),
             'courses': serialize_backup_rows(fetch_backup_rows(cursor, 'courses', 'course_id')),
             'students': serialize_backup_rows(fetch_backup_rows(cursor, 'students', 'student_id')),
@@ -294,7 +310,7 @@ def scan(): # Scan function
                 'message': f"This event is only for {event['event_course_code']} students."
             })
 
-        now          = datetime.now()
+        now          = local_now()
         current_time = now.strftime('%H:%M:%S')
 
         cursor.execute("""
@@ -618,7 +634,7 @@ def backup():
 def export_backup():
     payload = build_backup_payload()
     data = json.dumps(payload, indent=2, ensure_ascii=False).encode('utf-8')
-    filename = f"attendance_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    filename = f"attendance_backup_{local_now().strftime('%Y%m%d_%H%M%S')}.json"
     return send_file(
         io.BytesIO(data),
         mimetype='application/json',
