@@ -46,6 +46,16 @@ def ensure_events_course_column(cursor):
         cursor.execute("ALTER TABLE events ADD COLUMN course_id INT NULL AFTER time_out_start")
         cursor.execute("ALTER TABLE events ADD INDEX (course_id)")
 
+
+def ensure_stations_college_column(cursor):
+    cursor.execute("SHOW COLUMNS FROM stations LIKE 'college_id'")
+    if cursor.fetchone():
+        return
+
+    cursor.execute("ALTER TABLE stations ADD COLUMN college_id INT NULL AFTER station_name")
+    cursor.execute("UPDATE stations st JOIN courses c ON st.course_id = c.course_id SET st.college_id = c.college_id WHERE st.college_id IS NULL")
+    cursor.execute("ALTER TABLE stations ADD INDEX (college_id)")
+
 def td_to_str(td):
     if hasattr(td, 'seconds'):
         total = int(td.total_seconds())
@@ -240,7 +250,29 @@ def station_login(): # Station login function
     data = request.get_json()
     session['station_id']   = data['station_id']
     session['station_name'] = data['station_name']
-    session['course_id']    = data['course_id']
+
+    college_id = data.get('college_id')
+    course_id = data.get('course_id')
+
+    if college_id is None and course_id is not None:
+        db = get_db()
+        cursor = db.cursor()
+        try:
+            cursor.execute(
+                "SELECT c.college_id, col.college_code, col.college_name FROM courses c JOIN colleges col ON c.college_id = col.college_id WHERE c.course_id = %s",
+                (course_id,)
+            )
+            course = cursor.fetchone()
+            if course:
+                college_id = course['college_id']
+                session['college_code'] = course['college_code']
+                session['college_name'] = course['college_name']
+        finally:
+            cursor.close()
+            db.close()
+
+    session['college_id'] = college_id
+    session['course_id'] = course_id
     return jsonify({'success': True})
 
 @app.route('/scanner') # Scanner route (for scanning student IDs)
@@ -275,6 +307,7 @@ def scan(): # Scan function
 
     try:
         ensure_events_course_column(cursor)
+        ensure_stations_college_column(cursor)
         cursor.execute("""
             SELECT e.*, c.course_code AS event_course_code
             FROM events e
@@ -288,8 +321,8 @@ def scan(): # Scan function
             return jsonify({'success': False, 'message': 'No active event. Please contact admin.'})
 
         cursor.execute("""
-            SELECT s.student_id, s.full_name, s.course_id, s.section,
-                   s.year_level, c.course_code, col.college_code, col.college_name
+             SELECT s.student_id, s.full_name, s.course_id, s.section,
+                 s.year_level, c.course_code, c.college_id, col.college_code, col.college_name
             FROM students s
             JOIN courses c    ON s.course_id  = c.course_id
             JOIN colleges col ON c.college_id = col.college_id
@@ -300,7 +333,15 @@ def scan(): # Scan function
         if not student:
             return jsonify({'success': False, 'message': 'Student not found'})
 
-        if student['course_id'] != session['course_id']:
+        station_college_id = session.get('college_id')
+        station_course_id = session.get('course_id')
+
+        if station_college_id is not None:
+            if student['college_id'] != station_college_id:
+                return jsonify({'success': False,
+                    'message': f"Wrong station! This student belongs to {student['college_code']}"
+                })
+        elif station_course_id is not None and student['course_id'] != station_course_id:
             return jsonify({'success': False,
                 'message': f"Wrong station! This student belongs to {student['course_code']}"
             })
@@ -385,13 +426,17 @@ def scan(): # Scan function
 def get_stations():
     db = get_db()
     cursor = db.cursor()
+    ensure_stations_college_column(cursor)
     cursor.execute("""
-        SELECT st.station_id, st.station_name, st.course_id,
-               c.course_code, col.college_code, col.college_name
+        SELECT MIN(st.station_id) AS station_id,
+               CONCAT(col.college_code, ' Department') AS station_name,
+               col.college_id,
+               col.college_code,
+               col.college_name
         FROM stations st
-        JOIN courses c    ON st.course_id  = c.course_id
-        JOIN colleges col ON c.college_id  = col.college_id
-        ORDER BY col.college_id, c.course_id
+        JOIN colleges col ON st.college_id = col.college_id
+        GROUP BY col.college_id, col.college_code, col.college_name
+        ORDER BY col.college_code
     """)
     stations = cursor.fetchall()
     cursor.close()

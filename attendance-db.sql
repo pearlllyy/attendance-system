@@ -117,7 +117,9 @@ CREATE TABLE students (
 CREATE TABLE stations (
     station_id   INT AUTO_INCREMENT PRIMARY KEY,
     station_name VARCHAR(50) NOT NULL,
-    course_id    INT NOT NULL,
+    college_id   INT NOT NULL,
+    course_id    INT DEFAULT NULL,
+    FOREIGN KEY (college_id) REFERENCES colleges(college_id),
     FOREIGN KEY (course_id) REFERENCES courses(course_id)
 );
 
@@ -176,14 +178,11 @@ INSERT INTO courses (course_code, course_name, major, college_id) VALUES
 ('BSA',  'Bachelor of Science in Agriculture',            NULL, 4);
 
 -- ─── Stations Data ────────────────────────────────────────
-INSERT INTO stations (station_name, course_id) VALUES
-('BSIT Station', 1),
-('BSHM Station', 2),
-('BSE Station',  3),
-('BSOA Station', 4),
-('BSEd Station', 5),
-('BEEd Station', 6),
-('BSA Station',  7);
+INSERT INTO stations (station_name, college_id, course_id) VALUES
+('CBM Station',  2, NULL),
+('SICT Station', 1, NULL),
+('SOA Station',  4, NULL),
+('COE Station',  3, NULL);
 
 -- ─── Sample Event ─────────────────────────────────────────
 INSERT INTO events (event_name, event_date, time_in_cutoff, time_out_start, is_active) VALUES

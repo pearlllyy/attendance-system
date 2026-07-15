@@ -152,19 +152,19 @@
         <div class="logo">
             <span class="badge">Station Setup</span>
             <h1>Attendance System</h1>
-            <p>Select this station's assigned course</p>
+            <p>Select this station's assigned department</p>
         </div>
 
-        <label for="station">Assigned Station</label>
+        <label for="station">Assigned Department</label>
         <select id="station">
-            <option value="">— Select a station —</option>
+            <option value="">— Select a department —</option>
         </select>
 
-        <button onclick="loginStation()">Confirm Station</button>
+        <button onclick="loginStation()">Confirm Department</button>
 
         <a href="/dashboard" class="admin-link"><p>Admin Access →</p></a>
 
-        <div class="error" id="error">Please select a station before continuing.</div>
+        <div class="error" id="error">Please select a department before continuing.</div>
     </div>
 
     <script>
@@ -176,7 +176,7 @@
             data.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = JSON.stringify(s);
-                opt.textContent = `${s.station_name} (${s.college_code})`;
+                opt.textContent = `${s.college_code} - ${s.college_name}`;
                 select.appendChild(opt);
             });
         }
