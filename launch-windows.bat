@@ -108,7 +108,7 @@ echo On this computer:
 echo   https://localhost:5000
 echo.
 echo On mobile devices (same Wi-Fi network):
-powershell -NoProfile -Command "& { $ips = @(Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -and $_.DefaultIPGateway } | ForEach-Object { $_.IPAddress } | Where-Object { $_ -match '^\d+\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^169\.254\.' } | Sort-Object -Unique); if ($ips.Count -eq 0) { Write-Host '  Could not detect a network IP address.'; Write-Host '  Run ipconfig and open: https://YOUR_IP:5000/scanner' } else { foreach ($ip in $ips) { Write-Host ('  https://{0}:5000' -f $ip) } } }"
+powershell -NoProfile -Command "& { $ips = @(Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -and $_.DefaultIPGateway } | ForEach-Object { $_.IPAddress } | Where-Object { $_ -match '^\d+\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^169\.254\.' } | Sort-Object -Unique); $ips | Out-File -FilePath 'server-ip.txt' -Encoding ascii -Force; if ($ips.Count -eq 0) { Write-Host '  Could not detect a network IP address.'; Write-Host '  Run ipconfig and open: https://YOUR_IP:5000/scanner' } else { foreach ($ip in $ips) { Write-Host ('  https://{0}:5000' -f $ip) } } }"
 echo.
 echo Your phone may warn about the security certificate the first time.
 echo You can continue for local use.

@@ -29,6 +29,15 @@ APP_TIMEZONE = get_app_timezone()
 def local_now():
     return datetime.now(APP_TIMEZONE)
 
+
+def get_lan_ips():
+    ip_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'server-ip.txt')
+    try:
+        with open(ip_file, 'r', encoding='utf-8') as f:
+            return [line.strip() for line in f if line.strip()]
+    except FileNotFoundError:
+        return []
+
 # ─── Database Connection ───────────────────────────────────────────
 def get_db():
     return pymysql.connect(
@@ -480,7 +489,8 @@ def dashboard():
     cursor.close()
     db.close()
     return render_template('dashboard.html', logs=logs, events=events, colleges=colleges,
-                           students_total=students_total, students=students)
+                           students_total=students_total, students=students,
+                           lan_ips=get_lan_ips())
 
 @app.route('/api/dashboard')
 @login_required

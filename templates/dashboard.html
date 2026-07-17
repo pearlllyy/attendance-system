@@ -228,6 +228,41 @@
             color: #475569;
             font-size: 14px;
         }
+        .scanner-link-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 16px;
+            border-radius: 12px;
+        }
+        .scanner-link-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 4px 8px;
+        }
+        .scanner-link-item code {
+            color: #e2e8f0;
+        }
+        /* .copy-btn {
+            background: #263347;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .copy-btn:hover { background: #334155; } */
     </style>
 </head>
 <body>
@@ -259,6 +294,18 @@
             </a>
         </div>
     </nav>
+    {% if lan_ips %}
+    <div class="scanner-link-bar">
+        <span>Scanner link{{ 's' if lan_ips|length > 1 else '' }}:</span>
+        {% for ip in lan_ips %}
+        <span class="scanner-link-item">
+            <code id="scanner-url-{{ loop.index }}">https://{{ ip }}:5000/scanner</code>
+            <!-- <button type="button" class="copy-btn" onclick="copyScannerUrl('scanner-url-{{ loop.index }}', this)">Copy</button> -->
+        </span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <!-- <div class="header">
     <!-- <div class="header">
         <div>
             <h1>Attendance Dashboard</h1>
@@ -415,6 +462,14 @@
 
     <script src="/static/script.js" defer></script>
     <script>
+        function copyScannerUrl(id, btn) {
+            const text = document.getElementById(id).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const original = btn.textContent;
+                btn.textContent = 'Copied';
+                setTimeout(() => { btn.textContent = original; }, 1500);
+            });
+        }
         const students = {{ students | tojson }};
         const events = {{ events | tojson }};
 
