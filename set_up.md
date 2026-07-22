@@ -1,11 +1,5 @@
 ## Using Linux
 
-- Set up Xampp, install xampp and run:
-    `sudo /opt/lampp/lampp start` to start and `sudo /opt/lampp/lampp stop` to stop
-
-- Install requirements: 
-    `pip install -r requirements.txt`
-
 - If not working, set up virtual environment first: 
     `python3 -m venv venv`
 
@@ -18,79 +12,32 @@
 
 - then install the requirements.
 
+- Install requirements: 
+    `pip install -r requirements.txt`
+
+- Set up Xampp, install xampp and run:
+    `sudo /opt/lampp/lampp start` to start and `sudo /opt/lampp/lampp stop` to stop
+
+- Create a `.env` file in the project root before running the app. Use this as a starting point:
+
+```env
+MYSQL_HOST=localhost
+MYSQL_USER=root
+MYSQL_PASSWORD=
+MYSQL_DB=attendance_db
+MYSQL_PORT=3306
+SECRET_KEY=replace_with_a_random_secret
+ADMIN_PASSWORD=
+```
+
+- You can generate a strong `SECRET_KEY` with:
+    `python3 -c "import secrets; print(secrets.token_hex(32))"`
+
+- If you want to change the admin password later, the app will update `ADMIN_PASSWORD` in this same file.
+
 - If using firewall, set profile to trusted or add 5000 tcp port to your firewall
 
 - to run, just simply execute 
     `python app.py`
 
 **Note:** *Dependencies must be updated at all times:* `pip install --upgrade pip`
-
-## Using Podman
-
-- Make sure Podman is installed and available in your terminal.
-
-- On a headless Linux or SSH server, `podman compose` also needs the rootless Podman API socket. If you see an error about `/run/user/.../podman.sock`, start it first with:
-    `systemctl --user enable --now podman.socket`
-
-- If the socket still disappears after you log out of SSH, enable lingering once for your user so the user service can stay up:
-    `loginctl enable-linger $USER`
-
-- If your server does not use systemd user services, you can start the API manually in the current shell with:
-    `podman system service --time=0 unix:///run/user/$(id -u)/podman/podman.sock`
-
-- Use `compose.yaml` to start the app and database together. Do not build only the `Containerfile`, because that starts the Flask app without the MariaDB service.
-
-- Start the full system with:
-    `podman compose up --build`
-
-- If you want it to run in the background, use:
-    `podman compose up -d --build`
-
-- To stop the system, use:
-    `podman compose down`
-
-- To stop the system and remove the database volume, use:
-    `podman compose down -v`
-
-- Open the app in your browser at:
-    `https://localhost:5000`
-
-- The app uses a self-signed HTTPS certificate, so your browser will warn you the first time. You can safely continue for local use.
-
-- The database runs inside the Podman stack, so you do not need to start XAMPP for Podman deployment.
-
-- On first run, Podman will also start the MariaDB container and initialize the database from `attendance-db.sql`.
-
-- If `.env` does not exist yet, the container will create it automatically on first boot and generate a `SECRET_KEY` for you.
-
-- The container also writes `MYSQL_HOST=db` into `.env` so the Flask app connects to the MariaDB service inside Podman instead of `localhost`.
-
-- If the admin password is still empty in `.env`, the app will let you set it during the first admin login and save it back to `.env`.
-
-- If you want to reset everything, remove the containers and the database volume, then start again:
-    `podman compose down -v`
-    `podman compose up --build`
-
-## Using Podman on Windows
-
-- Install Podman for Windows first. Podman on Windows uses WSL2 in the background, so WSL2 must be available on the machine.
-
-- Start the system by double-clicking `launch-windows.bat`.
-
-- After the app starts, Windows may ask for Administrator permission so phones on the same Wi-Fi can connect. Click Yes on that prompt. Podman runs inside WSL2, and Windows must forward port 5000 from your PC to the Podman machine for mobile access to work.
-
-- If the app fails with `entrypoint.sh: No such file or directory`, pull the latest project files and run `launch-windows.bat` again. That error usually means a shell script was saved with Windows line endings; the build now normalizes those automatically.
-
-- To stop the system, double-click `stop-windows.bat`.
-
-- Stopping removes the running containers but keeps the database volume, so your saved data remains for the next launch.
-
-- Open the app in your browser at:
-    `https://localhost:5000`
-
-- After `launch-windows.bat` finishes, it prints the mobile scanner URL(s) to use on phones connected to the same Wi-Fi network, for example:
-    `https://192.168.1.10:5000`
-
-- The browser will warn you about the self-signed certificate the first time. You can continue for local use.
-
-- The database runs inside Podman, so XAMPP is not needed for the Windows Podman setup.
