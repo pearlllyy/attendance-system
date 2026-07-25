@@ -376,6 +376,11 @@
         <div class="header">
             <span class="station-badge">{{ station_name }}</span>
             <h1>ID Scanner</h1>
+            {% if scanner_name %}
+            <p style="color:#64748b; font-size:12px; margin-top:6px;">
+                Scanning as <strong style="color:#94a3b8;">{{ scanner_name }}</strong>
+            </p>
+            {% endif %}
         </div>
 
         <!-- Active Event Info -->
@@ -441,7 +446,11 @@
         </div>
     </div>
 
-    <a class="logout" onclick="logout()">
+    <a class="logout" onclick="switchScanner()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg>
+        Switch Scanner
+    </a>
+    <a class="logout" onclick="logout()" style="margin-top:10px;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Change Station
     </a>
@@ -555,7 +564,11 @@
         }
 
         function logout() {
-            window.location.href = '/';
+            window.location.href = '/station/logout';
+        }
+
+        function switchScanner() {
+            window.location.href = '/scanner/logout';
         }
     </script>
 </body>

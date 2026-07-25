@@ -195,3 +195,21 @@ INSERT INTO students (student_id, full_name, course_id, year_level, section) VAL
 ('2023-0003', 'Pedro Reyes',     2, 1, 'B'),
 ('2023-0004', 'Ana Garcia',      3, 2, 'A'),
 ('2023-0005', 'Jose Rizal',      5, 1, 'A');
+
+-- ─── Scanners (people in charge of scanning) ───────────────
+-- NOTE: On an existing database, app.py auto-creates this table and the
+-- attendance_logs columns below the first time it starts up — you don't
+-- need to run this block manually unless you're building the DB from
+-- scratch.
+CREATE TABLE scanners (
+    scanner_id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name  VARCHAR(100) NOT NULL,
+    scan_code  VARCHAR(20)  NOT NULL UNIQUE,
+    is_active  TINYINT      DEFAULT 1,
+    created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE attendance_logs ADD COLUMN scanner_id INT NULL AFTER station_id;
+ALTER TABLE attendance_logs ADD COLUMN time_out_scanner_id INT NULL AFTER time_out;
+ALTER TABLE attendance_logs ADD INDEX (scanner_id);
+ALTER TABLE attendance_logs ADD INDEX (time_out_scanner_id);

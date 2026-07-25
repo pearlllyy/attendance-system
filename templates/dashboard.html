@@ -283,6 +283,9 @@
             <a href="/absences" class="{{ 'active' if request.endpoint == 'absences' }}">
                 Reports
             </a>
+            <a href="/scanners" class="{{ 'active' if request.endpoint == 'scanners' }}">
+                Scanners
+            </a>
             <!-- <a href="/reports" class="{{ 'active' if request.endpoint == 'reports' }}">
                 Options
             </a> -->
@@ -425,6 +428,7 @@
                     <th>Event</th>
                     <th>Time In</th>
                     <th>Time Out</th>
+                    <th>Scanned By</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -442,6 +446,10 @@
                         <td>{{ log.event_name }}</td>
                         <td>{{ log.time_in }}</td>
                         <td>{{ log.time_out if log.time_out else '—' }}</td>
+                        <td style="font-size:12px; color:#94a3b8;">
+                            IN: {{ log.scanned_in_by if log.scanned_in_by else '—' }}
+                            {% if log.time_out %}<br>OUT: {{ log.scanned_out_by if log.scanned_out_by else '—' }}{% endif %}
+                        </td>
                         <td>
                             <button class="btn btn-danger"
                                 style="padding:5px 10px; font-size:12px;"
@@ -453,7 +461,7 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="11" class="empty">No attendance records yet.</td>
+                        <td colspan="12" class="empty">No attendance records yet.</td>
                     </tr>
                 {% endif %}
             </tbody>
@@ -576,6 +584,10 @@
                     <td>${log.event_name}</td>
                     <td>${log.time_in || '—'}</td>
                     <td>${log.time_out || '—'}</td>
+                    <td style="font-size:12px; color:#94a3b8;">
+                        IN: ${log.scanned_in_by || '—'}
+                        ${log.time_out ? `<br>OUT: ${log.scanned_out_by || '—'}` : ''}
+                    </td>
                     <td>
                         <button class="btn btn-danger"
                             style="padding:5px 10px; font-size:12px;"

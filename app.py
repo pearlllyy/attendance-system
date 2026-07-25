@@ -7,6 +7,8 @@ from dbutils.pooled_db import PooledDB
 from datetime import date, datetime, time, timedelta
 import csv
 import io
+import random
+import string
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import find_dotenv, load_dotenv, set_key
@@ -80,6 +82,43 @@ def ensure_stations_college_column(cursor):
     cursor.execute("ALTER TABLE stations ADD INDEX (college_id)")
 
 
+def ensure_scanners_table(cursor):
+    cursor.execute("SHOW TABLES LIKE 'scanners'")
+    if cursor.fetchone():
+        return
+    cursor.execute("""
+        CREATE TABLE scanners (
+            scanner_id INT AUTO_INCREMENT PRIMARY KEY,
+            full_name  VARCHAR(100) NOT NULL,
+            scan_code  VARCHAR(20)  NOT NULL UNIQUE,
+            is_active  TINYINT      DEFAULT 1,
+            created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+
+def ensure_attendance_scanner_columns(cursor):
+    # Who scanned the student IN
+    cursor.execute("SHOW COLUMNS FROM attendance_logs LIKE 'scanner_id'")
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE attendance_logs ADD COLUMN scanner_id INT NULL AFTER station_id")
+        cursor.execute("ALTER TABLE attendance_logs ADD INDEX (scanner_id)")
+    # Who scanned the student OUT (may be a different person)
+    cursor.execute("SHOW COLUMNS FROM attendance_logs LIKE 'time_out_scanner_id'")
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE attendance_logs ADD COLUMN time_out_scanner_id INT NULL AFTER time_out")
+        cursor.execute("ALTER TABLE attendance_logs ADD INDEX (time_out_scanner_id)")
+
+
+def generate_scanner_code(cursor, length=6):
+    """Generate a unique numeric code not already assigned to a scanner."""
+    while True:
+        code = ''.join(random.choices(string.digits, k=length))
+        cursor.execute("SELECT scanner_id FROM scanners WHERE scan_code = %s", (code,))
+        if not cursor.fetchone():
+            return code
+
+
 def run_startup_migrations():
     """One-time schema check/migration, run once when the app boots instead
     of on every /scan, /dashboard, /events, etc. request."""
@@ -88,6 +127,8 @@ def run_startup_migrations():
     try:
         ensure_events_course_column(cursor)
         ensure_stations_college_column(cursor)
+        ensure_scanners_table(cursor)
+        ensure_attendance_scanner_columns(cursor)
         conn.commit()
     finally:
         cursor.close()
@@ -189,6 +230,7 @@ def build_backup_payload():
             'students': serialize_backup_rows(fetch_backup_rows(cursor, 'students', 'student_id')),
             'stations': serialize_backup_rows(fetch_backup_rows(cursor, 'stations', 'station_id')),
             'events': serialize_backup_rows(fetch_backup_rows(cursor, 'events', 'event_id')),
+            'scanners': serialize_backup_rows(fetch_backup_rows(cursor, 'scanners', 'scanner_id')),
             'attendance_logs': serialize_backup_rows(fetch_backup_rows(cursor, 'attendance_logs', 'log_id')),
         }
         return payload
@@ -207,7 +249,8 @@ def import_backup_payload(payload):
         ('students', ['student_id', 'full_name', 'course_id', 'year_level', 'section'], 'student_id'),
         ('stations', ['station_id', 'station_name', 'course_id'], 'station_id'),
         ('events', ['event_id', 'event_name', 'event_date', 'time_in_cutoff', 'time_out_start', 'course_id', 'is_active'], 'event_id'),
-        ('attendance_logs', ['log_id', 'student_id', 'event_id', 'station_id', 'time_in', 'time_out', 'status'], 'log_id'),
+        ('scanners', ['scanner_id', 'full_name', 'scan_code', 'is_active', 'created_at'], 'scanner_id'),
+        ('attendance_logs', ['log_id', 'student_id', 'event_id', 'station_id', 'scanner_id', 'time_in', 'time_out', 'time_out_scanner_id', 'status'], 'log_id'),
     ]
 
     try:
@@ -316,10 +359,59 @@ def station_login(): # Station login function
     session['course_id'] = course_id
     return jsonify({'success': True})
 
+@app.route('/station/logout') # Fully clears the station + scanner session
+def station_logout():
+    for key in ('station_id', 'station_name', 'college_id', 'college_code',
+                'college_name', 'course_id', 'scanner_id', 'scanner_name'):
+        session.pop(key, None)
+    return redirect(url_for('index'))
+
+# ─── Scanner (person-in-charge) authentication ─────────────────────
+@app.route('/scanner/login', methods=['GET', 'POST'])
+def scanner_login():
+    if 'station_id' not in session:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        code = (data.get('code') or '').strip()
+
+        if not code:
+            return jsonify({'success': False, 'message': 'Please enter your scanner code.'})
+
+        db = get_db()
+        cursor = db.cursor()
+        try:
+            cursor.execute(
+                "SELECT scanner_id, full_name, is_active FROM scanners WHERE scan_code = %s",
+                (code,)
+            )
+            scanner_row = cursor.fetchone()
+        finally:
+            cursor.close()
+            db.close()
+
+        if not scanner_row or not scanner_row['is_active']:
+            return jsonify({'success': False, 'message': 'Invalid or inactive scanner code.'})
+
+        session['scanner_id']   = scanner_row['scanner_id']
+        session['scanner_name'] = scanner_row['full_name']
+        return jsonify({'success': True})
+
+    return render_template('scanner_login.html', station_name=session.get('station_name'))
+
+@app.route('/scanner/logout') # Lets a different person take over scanning without re-picking the station
+def scanner_logout():
+    session.pop('scanner_id', None)
+    session.pop('scanner_name', None)
+    return redirect(url_for('scanner_login'))
+
 @app.route('/scanner') # Scanner route (for scanning student IDs)
 def scanner():  # Scanner function
     if 'station_id' not in session:
         return redirect(url_for('index'))
+    if 'scanner_id' not in session:
+        return redirect(url_for('scanner_login'))
     db = get_db()
     cursor = db.cursor()
     cursor.execute("SELECT * FROM events WHERE is_active = 1 LIMIT 1")
@@ -328,6 +420,7 @@ def scanner():  # Scanner function
     db.close()
     return render_template('scanner.html',
         station_name=session['station_name'],
+        scanner_name=session.get('scanner_name'),
         event=event
     )
 
@@ -335,6 +428,8 @@ def scanner():  # Scanner function
 def scan(): # Scan function
     if 'station_id' not in session:
         return jsonify({'success': False, 'message': 'No station logged in'})
+    if 'scanner_id' not in session:
+        return jsonify({'success': False, 'message': 'Scanner not verified. Please re-enter your scanner code.'})
 
     data       = request.get_json()
     student_id = data.get('student_id', '').strip()
@@ -420,9 +515,9 @@ def scan(): # Scan function
                 })
             cursor.execute("""
                 UPDATE attendance_logs
-                SET time_out = %s
+                SET time_out = %s, time_out_scanner_id = %s
                 WHERE student_id = %s AND event_id = %s
-            """, (current_time, student_id, event['event_id']))
+            """, (current_time, session['scanner_id'], student_id, event['event_id']))
             db.commit()
             return jsonify({
                 'success': True,
@@ -437,11 +532,11 @@ def scan(): # Scan function
 
         cursor.execute("""
             INSERT INTO attendance_logs
-            (student_id, event_id, station_id, time_in, status)
-            VALUES (%s, %s, %s, %s, %s)
+            (student_id, event_id, station_id, scanner_id, time_in, status)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             student_id, event['event_id'],
-            session['station_id'], current_time, status
+            session['station_id'], session['scanner_id'], current_time, status
         ))
         db.commit()
 
@@ -505,12 +600,16 @@ def dashboard():
         SELECT a.log_id, s.full_name, s.student_id, s.section, s.year_level,
                c.course_code, col.college_code,
                e.event_name, e.event_date,
-               a.time_in, a.time_out, a.status
+               a.time_in, a.time_out, a.status,
+               sc_in.full_name  AS scanned_in_by,
+               sc_out.full_name AS scanned_out_by
         FROM attendance_logs a
         JOIN students s   ON a.student_id = s.student_id
         JOIN courses c    ON s.course_id  = c.course_id
         JOIN colleges col ON c.college_id = col.college_id
         JOIN events e     ON a.event_id   = e.event_id
+        LEFT JOIN scanners sc_in  ON a.scanner_id = sc_in.scanner_id
+        LEFT JOIN scanners sc_out ON a.time_out_scanner_id = sc_out.scanner_id
         ORDER BY e.event_date DESC, a.time_in DESC
     """)
     logs = cursor.fetchall()
@@ -531,12 +630,16 @@ def dashboard_api():
                e.event_name, e.event_date,
                TIME_FORMAT(a.time_in,  '%H:%i:%s') as time_in,
                TIME_FORMAT(a.time_out, '%H:%i:%s') as time_out,
-               a.status
+               a.status,
+               sc_in.full_name  AS scanned_in_by,
+               sc_out.full_name AS scanned_out_by
         FROM attendance_logs a
         JOIN students s   ON a.student_id = s.student_id
         JOIN courses c    ON s.course_id  = c.course_id
         JOIN colleges col ON c.college_id = col.college_id
         JOIN events e     ON a.event_id   = e.event_id
+        LEFT JOIN scanners sc_in  ON a.scanner_id = sc_in.scanner_id
+        LEFT JOIN scanners sc_out ON a.time_out_scanner_id = sc_out.scanner_id
         ORDER BY e.event_date DESC, a.time_in DESC
     """)
     logs = cursor.fetchall()
@@ -560,9 +663,62 @@ def absences():
         ORDER BY col.college_id, c.course_id
     """)
     courses = cursor.fetchall()
+    cursor.execute("""
+        SELECT s.student_id, s.full_name, s.section, s.year_level,
+               c.course_code, col.college_code
+        FROM students s
+        JOIN courses c    ON s.course_id  = c.course_id
+        JOIN colleges col ON c.college_id = col.college_id
+        ORDER BY s.full_name
+    """)
+    students = cursor.fetchall()
     cursor.close()
     db.close()
-    return render_template('absences.html', events=events, colleges=colleges, courses=courses)
+    return render_template('absences.html', events=events, colleges=colleges, courses=courses, students=students)
+
+@app.route('/api/student-attendance')
+@login_required
+def student_attendance_api():
+    student_id = request.args.get('student_id', '').strip()
+    if not student_id:
+        return jsonify({'student': None, 'records': []})
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            SELECT s.student_id, s.full_name, s.section, s.year_level,
+                   c.course_id, c.course_code, col.college_code
+            FROM students s
+            JOIN courses c    ON s.course_id  = c.course_id
+            JOIN colleges col ON c.college_id = col.college_id
+            WHERE s.student_id = %s
+        """, (student_id,))
+        student = cursor.fetchone()
+
+        if not student:
+            return jsonify({'student': None, 'records': []})
+
+        cursor.execute("""
+            SELECT e.event_id, e.event_name, e.event_date,
+                   TIME_FORMAT(a.time_in,  '%%H:%%i:%%s') AS time_in,
+                   TIME_FORMAT(a.time_out, '%%H:%%i:%%s') AS time_out,
+                   CASE WHEN a.log_id IS NULL THEN 'Absent' ELSE a.status END AS status,
+                   sc_in.full_name  AS scanned_in_by,
+                   sc_out.full_name AS scanned_out_by
+            FROM events e
+            LEFT JOIN attendance_logs a ON a.event_id = e.event_id AND a.student_id = %s
+            LEFT JOIN scanners sc_in  ON a.scanner_id = sc_in.scanner_id
+            LEFT JOIN scanners sc_out ON a.time_out_scanner_id = sc_out.scanner_id
+            WHERE (e.course_id IS NULL OR e.course_id = %s)
+            ORDER BY e.event_date DESC
+        """, (student_id, student['course_id']))
+        records = cursor.fetchall()
+
+        return jsonify({'student': student, 'records': records})
+    finally:
+        cursor.close()
+        db.close()
 
 @app.route('/api/absences')
 @login_required
@@ -582,13 +738,17 @@ def absences_api():
     query = """
         SELECT s.student_id, s.full_name, s.section, s.year_level,
                c.course_code, col.college_code,
-               CASE WHEN a.log_id IS NULL THEN 'Absent' ELSE 'Present' END as status
+               CASE WHEN a.log_id IS NULL THEN 'Absent' ELSE 'Present' END as status,
+               sc_in.full_name  AS scanned_in_by,
+               sc_out.full_name AS scanned_out_by
         FROM students s
         JOIN courses c    ON s.course_id  = c.course_id
         JOIN colleges col ON c.college_id = col.college_id
         JOIN events e     ON e.event_id = %s
         LEFT JOIN attendance_logs a ON a.student_id = s.student_id
                                    AND a.event_id = e.event_id
+        LEFT JOIN scanners sc_in  ON a.scanner_id = sc_in.scanner_id
+        LEFT JOIN scanners sc_out ON a.time_out_scanner_id = sc_out.scanner_id
         WHERE (e.course_id IS NULL OR e.course_id = s.course_id)
     """
     params = [event_id]
@@ -679,7 +839,7 @@ def absence_summary():
 def backup():
     db = get_db()
     cursor = db.cursor()
-    colleges_total = courses_total = students_total = stations_total = events_total = logs_total = 0
+    colleges_total = courses_total = students_total = stations_total = events_total = scanners_total = logs_total = 0
     try:
         cursor.execute("SELECT COUNT(*) as total FROM colleges")
         colleges_total = cursor.fetchone()['total']
@@ -691,6 +851,8 @@ def backup():
         stations_total = cursor.fetchone()['total']
         cursor.execute("SELECT COUNT(*) as total FROM events")
         events_total = cursor.fetchone()['total']
+        cursor.execute("SELECT COUNT(*) as total FROM scanners")
+        scanners_total = cursor.fetchone()['total']
         cursor.execute("SELECT COUNT(*) as total FROM attendance_logs")
         logs_total = cursor.fetchone()['total']
     except Exception:
@@ -706,6 +868,7 @@ def backup():
         students_total=students_total,
         stations_total=stations_total,
         events_total=events_total,
+        scanners_total=scanners_total,
         logs_total=logs_total,
     )
 
@@ -847,6 +1010,149 @@ def delete_event():
     try:
         cursor.execute("DELETE FROM attendance_logs WHERE event_id = %s", (data['event_id'],))
         cursor.execute("DELETE FROM events WHERE event_id = %s", (data['event_id'],))
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route('/scanners')
+@login_required
+def scanners():
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("""
+        SELECT sc.scanner_id, sc.full_name, sc.scan_code, sc.is_active, sc.created_at,
+               COUNT(a.log_id) AS scans_done
+        FROM scanners sc
+        LEFT JOIN attendance_logs a
+               ON a.scanner_id = sc.scanner_id OR a.time_out_scanner_id = sc.scanner_id
+        GROUP BY sc.scanner_id, sc.full_name, sc.scan_code, sc.is_active, sc.created_at
+        ORDER BY sc.full_name
+    """)
+    scanner_list = cursor.fetchall()
+    cursor.close()
+    db.close()
+    return render_template('scanners.html', scanners=scanner_list)
+
+@app.route('/api/scanners/add', methods=['POST'])
+@login_required
+def add_scanner():
+    data = request.get_json(silent=True) or {}
+    full_name = (data.get('full_name') or '').strip()
+    if not full_name:
+        return jsonify({'success': False, 'message': 'Full name is required.'})
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        code = generate_scanner_code(cursor)
+        cursor.execute(
+            "INSERT INTO scanners (full_name, scan_code) VALUES (%s, %s)",
+            (full_name, code)
+        )
+        db.commit()
+        return jsonify({'success': True, 'scanner_id': cursor.lastrowid,
+                        'scan_code': code, 'full_name': full_name})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route('/api/scanners/update', methods=['POST'])
+@login_required
+def update_scanner():
+    data = request.get_json(silent=True) or {}
+    scanner_id = data.get('scanner_id')
+    full_name  = (data.get('full_name') or '').strip()
+    if not scanner_id or not full_name:
+        return jsonify({'success': False, 'message': 'Scanner ID and full name are required.'})
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            "UPDATE scanners SET full_name = %s WHERE scanner_id = %s",
+            (full_name, scanner_id)
+        )
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route('/api/scanners/regenerate-code', methods=['POST'])
+@login_required
+def regenerate_scanner_code():
+    data = request.get_json(silent=True) or {}
+    scanner_id = data.get('scanner_id')
+    if not scanner_id:
+        return jsonify({'success': False, 'message': 'Scanner ID is required.'})
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        code = generate_scanner_code(cursor)
+        cursor.execute(
+            "UPDATE scanners SET scan_code = %s WHERE scanner_id = %s",
+            (code, scanner_id)
+        )
+        db.commit()
+        return jsonify({'success': True, 'scan_code': code})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route('/api/scanners/toggle', methods=['POST'])
+@login_required
+def toggle_scanner():
+    data = request.get_json(silent=True) or {}
+    scanner_id = data.get('scanner_id')
+    if not scanner_id:
+        return jsonify({'success': False, 'message': 'Scanner ID is required.'})
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            "UPDATE scanners SET is_active = NOT is_active WHERE scanner_id = %s",
+            (scanner_id,)
+        )
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route('/api/scanners/delete', methods=['POST'])
+@login_required
+def delete_scanner():
+    data = request.get_json(silent=True) or {}
+    scanner_id = data.get('scanner_id')
+    if not scanner_id:
+        return jsonify({'success': False, 'message': 'Scanner ID is required.'})
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        # Historical logs keep the numeric scanner_id even after the scanner
+        # profile is deleted, so past "scanned by" records aren't lost —
+        # they'll just show as "Unknown scanner" once the name is gone.
+        cursor.execute("DELETE FROM scanners WHERE scanner_id = %s", (scanner_id,))
         db.commit()
         return jsonify({'success': True})
     except Exception as e:

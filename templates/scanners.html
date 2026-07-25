@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanners - Attendance System</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/script.js" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background-color: #0f172a;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 32px 24px;
+            color: #f1f5f9;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header p { color: #64748b; font-size: 13px; margin-top: 2px; }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+        }
+
+        .btn-primary { background: #0e6aff; color: white; }
+        .btn-primary:hover { background: #0a54cc; }
+        .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+        .btn-secondary:hover { background: #263347; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: #d97706; color: white; }
+        .btn-warning:hover { background: #b45309; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+        }
+
+        .card p.hint {
+            color: #94a3b8;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .add-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .add-row input {
+            flex: 1;
+            min-width: 200px;
+            padding: 11px 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .add-row input:focus { border-color: #0e6aff; }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1e293b;
+        }
+
+        th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #64748b;
+            padding: 12px 16px;
+            border-bottom: 1px solid #334155;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid #263347;
+            white-space: nowrap;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        .code-pill {
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 4px 10px;
+            color: #7fc1f4;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-active   { background: rgba(22,163,74,0.15); color: #4ade80; }
+        .status-inactive { background: rgba(220,38,38,0.15); color: #f87171; }
+
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .empty { text-align: center; color: #64748b; padding: 30px; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-size: 13px;
+            display: none;
+            z-index: 999;
+        }
+
+        .toast.success { border-color: #16a34a; color: #86efac; }
+        .toast.error { border-color: #dc2626; color: #fca5a5; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/dashboard" class="navbar-brand">
+            Attendance System <span>Admin</span>
+        </a>
+        <div class="navbar-links">
+            <a href="/dashboard" class="{{ 'active' if request.endpoint == 'dashboard' }}">
+                Dashboard
+            </a>
+            <a href="/students" class="{{ 'active' if request.endpoint == 'students' }}">
+                Students
+            </a>
+            <a href="/events" class="{{ 'active' if request.endpoint == 'events' }}">
+                Events
+            </a>
+            <a href="/absences" class="{{ 'active' if request.endpoint == 'absences' }}">
+                Reports
+            </a>
+            <a href="/scanners" class="{{ 'active' if request.endpoint == 'scanners' }}">
+                Scanners
+            </a>
+            <a href="/backup" class="{{ 'active' if request.endpoint == 'backup' }}">
+                Backup
+            </a>
+            <a href="/admin/logout" class="logout-btn">
+                Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="header">
+        <div>
+            <h1>Scanners</h1>
+            <p>People in charge of scanning. Each one gets a unique code to enter before scanning starts.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Add Scanner</h2>
+        <p class="hint">Enter their full name — a unique code is generated automatically. Give that code to them so they can sign in at the scanner station.</p>
+        <div class="add-row">
+            <input type="text" id="newScannerName" placeholder="Full name (e.g. Juan Dela Cruz)"
+                onkeydown="if(event.key==='Enter') addScanner()">
+            <button class="btn btn-primary" onclick="addScanner()">Add Scanner</button>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="table-wrapper" style="border: none; border-radius: 0;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Code</th>
+                        <th>Status</th>
+                        <th>Scans Logged</th>
+                        <th>Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="scannerTableBody">
+                    {% if scanners %}
+                        {% for s in scanners %}
+                        <tr id="scanner-row-{{ s.scanner_id }}">
+                            <td id="name-{{ s.scanner_id }}">{{ s.full_name }}</td>
+                            <td><span class="code-pill" id="code-{{ s.scanner_id }}">{{ s.scan_code }}</span></td>
+                            <td>
+                                <span class="status-pill {{ 'status-active' if s.is_active else 'status-inactive' }}"
+                                      id="status-{{ s.scanner_id }}">
+                                    {{ 'Active' if s.is_active else 'Inactive' }}
+                                </span>
+                            </td>
+                            <td>{{ s.scans_done }}</td>
+                            <td>{{ s.created_at }}</td>
+                            <td class="actions">
+                                <button class="btn btn-secondary btn-sm" onclick="renameScanner({{ s.scanner_id }})">Rename</button>
+                                <button class="btn btn-warning btn-sm" onclick="regenerateCode({{ s.scanner_id }})">New Code</button>
+                                <button class="btn btn-secondary btn-sm" onclick="toggleScanner({{ s.scanner_id }})">
+                                    {{ 'Deactivate' if s.is_active else 'Activate' }}
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteScanner({{ s.scanner_id }}, '{{ s.full_name }}')">Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="6" class="empty">No scanners added yet.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3500);
+        }
+
+        async function addScanner() {
+            const input = document.getElementById('newScannerName');
+            const full_name = input.value.trim();
+            if (!full_name) {
+                showToast('Please enter a full name.', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/scanners/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ full_name })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast(`Added ${data.full_name} — code: ${data.scan_code}`, 'success');
+                input.value = '';
+                setTimeout(() => window.location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to add scanner.', 'error');
+            }
+        }
+
+        async function renameScanner(scannerId) {
+            const currentName = document.getElementById(`name-${scannerId}`).textContent.trim();
+            const newName = prompt('New full name:', currentName);
+            if (!newName || !newName.trim() || newName.trim() === currentName) return;
+
+            const res = await fetch('/api/scanners/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scanner_id: scannerId, full_name: newName.trim() })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById(`name-${scannerId}`).textContent = newName.trim();
+                showToast('Scanner renamed.', 'success');
+            } else {
+                showToast(data.message || 'Failed to rename.', 'error');
+            }
+        }
+
+        async function regenerateCode(scannerId) {
+            const ok = confirm('Generate a new code? The old code will stop working immediately.');
+            if (!ok) return;
+
+            const res = await fetch('/api/scanners/regenerate-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scanner_id: scannerId })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById(`code-${scannerId}`).textContent = data.scan_code;
+                showToast(`New code: ${data.scan_code}`, 'success');
+            } else {
+                showToast(data.message || 'Failed to regenerate code.', 'error');
+            }
+        }
+
+        async function toggleScanner(scannerId) {
+            const res = await fetch('/api/scanners/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scanner_id: scannerId })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                window.location.reload();
+            } else {
+                showToast(data.message || 'Failed to update status.', 'error');
+            }
+        }
+
+        async function deleteScanner(scannerId, name) {
+            const ok = confirm(`Delete ${name}? Past attendance logs will keep the record but show "Unknown scanner".`);
+            if (!ok) return;
+
+            const res = await fetch('/api/scanners/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scanner_id: scannerId })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById(`scanner-row-${scannerId}`).remove();
+                showToast('Scanner deleted.', 'success');
+            } else {
+                showToast(data.message || 'Failed to delete.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

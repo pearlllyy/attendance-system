@@ -105,6 +105,23 @@
             transition: border-color 0.2s;
         }
         .filter-group select:focus { border-color: #0ea5e9; }
+        .filter-group input[type="text"] {
+            padding: 9px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .filter-group input[type="text"]:focus { border-color: #0ea5e9; }
+        .filter-group input[type="text"]::placeholder { color: #475569; }
+        .student-info-line {
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+        .student-info-line .meta { color: #64748b; font-size: 13px; margin-left: 8px; }
         .filter-actions { margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap; }
         .summary {
             display: grid;
@@ -203,6 +220,9 @@
             <a href="/absences" class="{{ 'active' if request.endpoint == 'absences' }}">
                 Reports
             </a>
+            <a href="/scanners" class="{{ 'active' if request.endpoint == 'scanners' }}">
+                Scanners
+            </a>
             <!-- <a href="/reports" class="{{ 'active' if request.endpoint == 'reports' }}">
                 Options
             </a> -->
@@ -221,6 +241,7 @@
         </div>
         <div class="tabs">
             <button class="tab active" onclick="switchTab('perEvent', this)">Per Event</button>
+            <button class="tab"        onclick="switchTab('students', this)">Students</button>
             <button class="tab"        onclick="switchTab('summary', this)">Absence Count</button>
         </div>
     </div>
@@ -328,12 +349,80 @@
                         <th>Year</th>
                         <th>Section</th>
                         <th>Status</th>
+                        <th>Scanned By</th>
                     </tr>
                 </thead>
                 <tbody id="absenceBody">
                     <tr>
-                        <td colspan="8" class="hint">
+                        <td colspan="9" class="hint">
                             Select an event and apply filters to see absences.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── Tab: Students ──────────────────────────────────── -->
+    <div class="tab-content" id="tab-students">
+        <div class="filter-card">
+            <h2>Select Student</h2>
+            <div class="filter-grid">
+                <div class="filter-group" style="grid-column: span 2;">
+                    <label>Student ID or Name</label>
+                    <input type="text" id="studentSearch" list="studentDatalist"
+                        placeholder="Start typing an ID or name..."
+                        onchange="loadStudentAttendance()">
+                    <datalist id="studentDatalist">
+                        {% for s in students %}
+                            <option value="{{ s.student_id }} - {{ s.full_name }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <div class="filter-group filter-actions" style="max-width: 150px;">
+                    <button class="btn btn-success" onclick="exportCSV('student')" >Export CSV</button>
+                </div>
+            </div>
+
+            <p id="studentInfoLine" class="student-info-line" style="display:none; margin-top:4px;">
+                <strong id="studentInfoName"></strong>
+                <span class="meta" id="studentInfoMeta"></span>
+            </p>
+        </div>
+
+        <div class="summary">
+            <div class="summary-card sum">
+                <div class="label">Present</div>
+                <div class="value present" id="studentPresentCount">—</div>
+            </div>
+            <div class="summary-card sum">
+                <div class="label">Absent</div>
+                <div class="value absent" id="studentAbsentCount">—</div>
+            </div>
+            <div class="summary-card event-card">
+                <div class="label">Attendance Rate</div>
+                <div class="value total" id="studentRate"
+                    style="font-size:18px; margin-top:10px; color: whitesmoke;">—</div>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Event</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Scanned By</th>
+                    </tr>
+                </thead>
+                <tbody id="studentRecordBody">
+                    <tr>
+                        <td colspan="7" class="hint">
+                            Search and select a student above to see their full attendance record.
                         </td>
                     </tr>
                 </tbody>
@@ -483,11 +572,15 @@
                 : students;
             
             if (!filtered.length) {
-                body.innerHTML = `<tr><td colspan="8" class="empty">No records found!</td></tr>`;
+                body.innerHTML = `<tr><td colspan="9" class="empty">No records found!</td></tr>`;
                 return;
             }
             
-            body.innerHTML = filtered.map((s, i) => `
+            body.innerHTML = filtered.map((s, i) => {
+                const scannedBy = s.status === 'Present'
+                    ? `IN: ${s.scanned_in_by || '—'}${s.scanned_out_by ? ` | OUT: ${s.scanned_out_by}` : ''}`
+                    : '—';
+                return `
                 <tr>
                     <td>${i + 1}</td>
                     <td>${s.student_id}</td>
@@ -497,8 +590,10 @@
                     <td>${s.year_level}</td>
                     <td>${s.section}</td>
                     <td><span class="badge ${s.status === 'Present' ? 'badge-present' : 'badge-absent'}">${s.status}</span></td>
+                    <td style="font-size:12px; color:#94a3b8;">${scannedBy}</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
         }
 
         async function loadSummary() {
@@ -578,12 +673,84 @@
             alert(`Absent in:\n${events}`);
         }
 
+        async function loadStudentAttendance() {
+            const raw = document.getElementById('studentSearch').value.trim();
+            const studentId = raw.split(' - ')[0].trim();
+            const infoLine = document.getElementById('studentInfoLine');
+
+            if (!studentId) return;
+
+            const res  = await fetch(`/api/student-attendance?student_id=${encodeURIComponent(studentId)}`);
+            const data = await res.json();
+
+            if (!data.student) {
+                showToast('Student not found. Please pick one from the suggestions.', 'error');
+                infoLine.style.display = 'none';
+                document.getElementById('studentRecordBody').innerHTML =
+                    `<tr><td colspan="7" class="hint">Search and select a student above to see their full attendance record.</td></tr>`;
+                document.getElementById('studentPresentCount').textContent = '—';
+                document.getElementById('studentAbsentCount').textContent  = '—';
+                document.getElementById('studentRate').textContent = '—';
+                return;
+            }
+
+            const s = data.student;
+            document.getElementById('studentInfoName').textContent = `${s.student_id} — ${s.full_name}`;
+            document.getElementById('studentInfoMeta').textContent =
+                `${s.college_code} · ${s.course_code} · Year ${s.year_level} · Section ${s.section}`;
+            infoLine.style.display = 'block';
+
+            renderStudentRecords(data.records);
+        }
+
+        function renderStudentRecords(records) {
+            const body = document.getElementById('studentRecordBody');
+
+            if (!records.length) {
+                body.innerHTML = `<tr><td colspan="7" class="empty">No events found for this student's course.</td></tr>`;
+                document.getElementById('studentPresentCount').textContent = 0;
+                document.getElementById('studentAbsentCount').textContent  = 0;
+                document.getElementById('studentRate').textContent = '—';
+                return;
+            }
+
+            const presentCount = records.filter(r => r.status === 'Present' || r.status === 'Late').length;
+            const absentCount  = records.filter(r => r.status === 'Absent').length;
+            const rate = Math.round((presentCount / records.length) * 100);
+
+            document.getElementById('studentPresentCount').textContent = presentCount;
+            document.getElementById('studentAbsentCount').textContent  = absentCount;
+            document.getElementById('studentRate').textContent = `${rate}%`;
+
+            body.innerHTML = records.map((r, i) => {
+                const attended = r.status === 'Present' || r.status === 'Late';
+                const scannedBy = attended
+                    ? `IN: ${r.scanned_in_by || '—'}${r.scanned_out_by ? ` | OUT: ${r.scanned_out_by}` : ''}`
+                    : '—';
+                return `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${r.event_name}</td>
+                        <td>${r.event_date}</td>
+                        <td><span class="badge ${r.status === 'Absent' ? 'badge-absent' : 'badge-present'}">${r.status}</span></td>
+                        <td>${r.time_in || '—'}</td>
+                        <td>${r.time_out || '—'}</td>
+                        <td style="font-size:12px; color:#94a3b8;">${scannedBy}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
         function exportCSV(tab) {
             let bodyId, header, cols;
             if (tab === 'perEvent') {
                 bodyId = 'absenceBody';
-                header = 'Student ID,Full Name,College,Course,Year,Section,Status\n';
-                cols   = 8;
+                header = 'Student ID,Full Name,College,Course,Year,Section,Status,Scanned By\n';
+                cols   = 9;
+            } else if (tab === 'student') {
+                bodyId = 'studentRecordBody';
+                header = 'Event,Date,Status,Time In,Time Out,Scanned By\n';
+                cols   = 7;
             } else {
                 bodyId = 'summaryBody';
                 header = 'Student ID,Full Name,College,Course,Year,Section,Attended,Absences,Rate\n';

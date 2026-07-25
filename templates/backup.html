@@ -167,6 +167,9 @@
             <a href="/absences" class="{{ 'active' if request.endpoint == 'absences' }}">
                 Reports
             </a>
+            <a href="/scanners" class="{{ 'active' if request.endpoint == 'scanners' }}">
+                Scanners
+            </a>
             <!-- <a href="/reports" class="{{ 'active' if request.endpoint == 'reports' }}">
                 Options
             </a> -->
@@ -191,7 +194,8 @@
             <h2>Export Full Backup</h2>
             <p>
                 Download a JSON snapshot that includes colleges, courses, students,
-                stations, events, and attendance logs. Absences and present records are
+                stations, scanners, and events, plus attendance logs (which record who
+                scanned each student in and out). Absences and present records are
                 restored from the underlying attendance logs.
             </p>
 
@@ -211,6 +215,10 @@
                 <div class="meta">
                     <div class="label">Stations</div>
                     <div class="value">{{ stations_total }}</div>
+                </div>
+                <div class="meta">
+                    <div class="label">Scanners</div>
+                    <div class="value">{{ scanners_total }}</div>
                 </div>
                 <div class="meta">
                     <div class="label">Events</div>

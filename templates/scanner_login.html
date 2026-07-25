@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Code — Attendance System</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background-color: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .logo { text-align: center; margin-bottom: 28px; }
+
+        .badge {
+            display: inline-block;
+            background: #0e6aff;
+            color: #03182c;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 11px;
+            border-radius: 99px;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .logo h1 { color: #f1f5f9; font-size: 20px; font-weight: 700; }
+        .logo p  { color: #64748b; font-size: 13px; margin-top: 8px; line-height: 1.5; }
+
+        label {
+            display: block;
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            color: #f1f5f9;
+            font-size: 22px;
+            letter-spacing: 6px;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus { border-color: #0e6aff; }
+        input::placeholder { color: #334155; letter-spacing: 6px; }
+
+        button {
+            width: 100%;
+            margin-top: 20px;
+            padding: 14px;
+            background: #0e6aff;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:hover { background: #0a54cc; }
+        button:active { transform: scale(0.99); }
+
+        .error {
+            background: #450a0a;
+            border: 1px solid #dc2626;
+            color: #fca5a5;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 16px;
+            display: none;
+            text-align: center;
+        }
+
+        .back-link { text-align: center; margin-top: 22px; font-size: 13px; }
+        .back-link a { color: #64748b; text-decoration: none; }
+        .back-link a:hover { color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <span class="badge">{{ station_name }}</span>
+            <h1>Enter Your Scanner Code</h1>
+            <p>Ask the admin for your personal code so scans can be tracked to your name.</p>
+        </div>
+
+        <label for="code">Scanner Code</label>
+        <input type="text" id="code" placeholder="000000" inputmode="numeric" maxlength="10"
+            autocomplete="off" onkeydown="if(event.key==='Enter') verifyCode()">
+
+        <button onclick="verifyCode()">Continue to Scanner</button>
+
+        <div class="error" id="error"></div>
+
+        <div class="back-link">
+            <a href="/station/logout">← Change station</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('code').focus();
+
+        async function verifyCode() {
+            const codeInput = document.getElementById('code');
+            const error = document.getElementById('error');
+            const code = codeInput.value.trim();
+
+            if (!code) {
+                error.textContent = 'Please enter your scanner code.';
+                error.style.display = 'block';
+                return;
+            }
+
+            error.style.display = 'none';
+
+            try {
+                const res = await fetch('/scanner/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    window.location.href = '/scanner';
+                } else {
+                    error.textContent = data.message;
+                    error.style.display = 'block';
+                    codeInput.value = '';
+                    codeInput.focus();
+                }
+            } catch (err) {
+                error.textContent = 'Connection lost. Please try again.';
+                error.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
