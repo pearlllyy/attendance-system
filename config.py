@@ -6,7 +6,7 @@ load_dotenv()  # reads variables from a local .env file into the environment
 
 class Config:
     # Database settings
-    MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
+    MYSQL_HOST = os.environ.get('MYSQL_HOST', '127.0.0.1')
     MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
     MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
     MYSQL_DB = os.environ.get('MYSQL_DB', 'attendance_db')

@@ -3,6 +3,7 @@ import json
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, send_file
 from config import Config
 import pymysql
+from dbutils.pooled_db import PooledDB
 from datetime import date, datetime, time, timedelta
 import csv
 import io
@@ -38,16 +39,29 @@ def get_lan_ips():
     except FileNotFoundError:
         return []
 
-# ─── Database Connection ───────────────────────────────────────────
+# ─── Database Connection Pool ──────────────────────────────────────
+# A pool avoids opening a brand-new TCP + MySQL auth handshake on every
+# single request. Connections are created lazily (up to maxconnections)
+# and reused, which matters a lot for the /scan route during rapid
+# back-to-back scans across stations.
+db_pool = PooledDB(
+    creator=pymysql,
+    mincached=2,          # connections kept open even when idle
+    maxcached=8,          # max idle connections kept in the pool
+    maxconnections=20,    # hard cap on total connections
+    blocking=True,        # wait for a free connection instead of erroring
+    ping=1,                # ping/reconnect stale connections before reuse
+    host=app.config['MYSQL_HOST'],
+    user=app.config['MYSQL_USER'],
+    password=app.config['MYSQL_PASSWORD'],
+    db=app.config['MYSQL_DB'],
+    port=app.config['MYSQL_PORT'],
+    cursorclass=pymysql.cursors.DictCursor
+)
+
+
 def get_db():
-    return pymysql.connect(
-        host=app.config['MYSQL_HOST'],
-        user=app.config['MYSQL_USER'],
-        password=app.config['MYSQL_PASSWORD'],
-        db=app.config['MYSQL_DB'],
-        port=app.config['MYSQL_PORT'],
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    return db_pool.connection()
 
 def ensure_events_course_column(cursor):
     cursor.execute("SHOW COLUMNS FROM events LIKE 'course_id'")
@@ -64,6 +78,24 @@ def ensure_stations_college_column(cursor):
     cursor.execute("ALTER TABLE stations ADD COLUMN college_id INT NULL AFTER station_name")
     cursor.execute("UPDATE stations st JOIN courses c ON st.course_id = c.course_id SET st.college_id = c.college_id WHERE st.college_id IS NULL")
     cursor.execute("ALTER TABLE stations ADD INDEX (college_id)")
+
+
+def run_startup_migrations():
+    """One-time schema check/migration, run once when the app boots instead
+    of on every /scan, /dashboard, /events, etc. request."""
+    conn = db_pool.connection()
+    cursor = conn.cursor()
+    try:
+        ensure_events_course_column(cursor)
+        ensure_stations_college_column(cursor)
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
+
+run_startup_migrations()
+
 
 def td_to_str(td):
     if hasattr(td, 'seconds'):
@@ -315,8 +347,6 @@ def scan(): # Scan function
     cursor = db.cursor()
 
     try:
-        ensure_events_course_column(cursor)
-        ensure_stations_college_column(cursor)
         cursor.execute("""
             SELECT e.*, c.course_code AS event_course_code
             FROM events e
@@ -435,7 +465,6 @@ def scan(): # Scan function
 def get_stations():
     db = get_db()
     cursor = db.cursor()
-    ensure_stations_college_column(cursor)
     cursor.execute("""
         SELECT MIN(st.station_id) AS station_id,
                CONCAT(col.college_code, ' Department') AS station_name,
@@ -458,7 +487,6 @@ def get_stations():
 def dashboard():
     db = get_db()
     cursor = db.cursor()
-    ensure_events_course_column(cursor)
     cursor.execute("SELECT event_id, event_name, event_date, course_id FROM events ORDER BY event_date DESC")
     events = cursor.fetchall()
     cursor.execute("SELECT * FROM colleges ORDER BY college_code")
@@ -550,7 +578,6 @@ def absences_api():
 
     db = get_db()
     cursor = db.cursor()
-    ensure_events_course_column(cursor)
 
     query = """
         SELECT s.student_id, s.full_name, s.section, s.year_level,
@@ -598,7 +625,6 @@ def absence_summary():
     db = get_db()
     cursor = db.cursor()
 
-    ensure_events_course_column(cursor)
     query = """
         SELECT s.student_id, s.full_name, s.section, s.year_level,
                c.course_code, col.college_code,
@@ -731,7 +757,6 @@ def import_backup():
 def events():
     db = get_db()
     cursor = db.cursor()
-    ensure_events_course_column(cursor)
     cursor.execute("""
         SELECT e.*, c.course_code
         FROM events e
@@ -757,7 +782,6 @@ def create_event():
     db = get_db()
     cursor = db.cursor()
     try:
-        ensure_events_course_column(cursor)
         course_id = data.get('course_id') or None
         if course_id is not None:
             cursor.execute("SELECT course_id FROM courses WHERE course_id = %s", (course_id,))
@@ -1028,4 +1052,4 @@ def delete_log():
 
 # ─── Run ──────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, ssl_context='adhoc')
+    app.run(host='0.0.0.0', port=5000, ssl_context='adhoc', threaded=True)
