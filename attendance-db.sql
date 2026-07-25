@@ -213,3 +213,14 @@ ALTER TABLE attendance_logs ADD COLUMN scanner_id INT NULL AFTER station_id;
 ALTER TABLE attendance_logs ADD COLUMN time_out_scanner_id INT NULL AFTER time_out;
 ALTER TABLE attendance_logs ADD INDEX (scanner_id);
 ALTER TABLE attendance_logs ADD INDEX (time_out_scanner_id);
+
+-- ─── Manual entry tracking ──────────────────────────────────
+-- NOTE: On an existing database, app.py auto-creates these columns the first
+-- time it starts up — you don't need to run this block manually unless
+-- you're building the DB from scratch.
+-- Tags whether the IN / OUT record came from an actual camera scan or was
+-- typed in manually by the scanner-in-charge (e.g. when the camera jams).
+-- Manual entries still go through every rule a real scan enforces; this
+-- column only exists for accountability/reporting.
+ALTER TABLE attendance_logs ADD COLUMN entry_method ENUM('scan', 'manual') NOT NULL DEFAULT 'scan' AFTER scanner_id;
+ALTER TABLE attendance_logs ADD COLUMN time_out_entry_method ENUM('scan', 'manual') NOT NULL DEFAULT 'scan' AFTER time_out_scanner_id;

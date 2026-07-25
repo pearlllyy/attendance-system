@@ -222,6 +222,25 @@
             background: #1a0c2e; color: #a78bfa; border: 1px solid #7c3aed;
         }
 
+        .manual-flag {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 1px 7px;
+            border-radius: 99px;
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            background: rgba(217, 119, 6, 0.15);
+            color: #f59e0b;
+            border: 1px solid #d97706;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        .manual-flag svg { flex-shrink: 0; }
+
         .empty {
             text-align: center;
             padding: 48px;
@@ -448,7 +467,11 @@
                         <td>{{ log.time_out if log.time_out else '—' }}</td>
                         <td style="font-size:12px; color:#94a3b8;">
                             IN: {{ log.scanned_in_by if log.scanned_in_by else '—' }}
-                            {% if log.time_out %}<br>OUT: {{ log.scanned_out_by if log.scanned_out_by else '—' }}{% endif %}
+                            {% if log.entry_method == 'manual' %}<span class="manual-flag" title="Manually entered"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>{% endif %}
+                            {% if log.time_out %}
+                                <br>OUT: {{ log.scanned_out_by if log.scanned_out_by else '—' }}
+                                {% if log.time_out_entry_method == 'manual' %}<span class="manual-flag" title="Manually entered"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>{% endif %}
+                            {% endif %}
                         </td>
                         <td>
                             <button class="btn btn-danger"
@@ -571,6 +594,11 @@
                 `Last updated: ${new Date().toLocaleTimeString()}`;
         }, 5000);
 
+        function manualFlagHtml(entryMethod) {
+            if (entryMethod !== 'manual') return '';
+            return `<span class="manual-flag" title="Manually entered"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>`;
+        }
+
         function refreshTable(logs) {
             document.getElementById('tableBody').innerHTML = logs.map((log, i) => `
                 <tr>
@@ -585,8 +613,8 @@
                     <td>${log.time_in || '—'}</td>
                     <td>${log.time_out || '—'}</td>
                     <td style="font-size:12px; color:#94a3b8;">
-                        IN: ${log.scanned_in_by || '—'}
-                        ${log.time_out ? `<br>OUT: ${log.scanned_out_by || '—'}` : ''}
+                        IN: ${log.scanned_in_by || '—'}${manualFlagHtml(log.entry_method)}
+                        ${log.time_out ? `<br>OUT: ${log.scanned_out_by || '—'}${manualFlagHtml(log.time_out_entry_method)}` : ''}
                     </td>
                     <td>
                         <button class="btn btn-danger"

@@ -110,6 +110,24 @@ def ensure_attendance_scanner_columns(cursor):
         cursor.execute("ALTER TABLE attendance_logs ADD INDEX (time_out_scanner_id)")
 
 
+def ensure_attendance_entry_method_columns(cursor):
+    # How the IN scan was captured: camera 'scan' vs typed-in 'manual' entry
+    cursor.execute("SHOW COLUMNS FROM attendance_logs LIKE 'entry_method'")
+    if not cursor.fetchone():
+        cursor.execute("""
+            ALTER TABLE attendance_logs
+            ADD COLUMN entry_method ENUM('scan', 'manual') NOT NULL DEFAULT 'scan' AFTER scanner_id
+        """)
+    # Same, but for the OUT side, since IN and OUT can be done by different
+    # people in different ways (e.g. camera IN, manual OUT after a jam)
+    cursor.execute("SHOW COLUMNS FROM attendance_logs LIKE 'time_out_entry_method'")
+    if not cursor.fetchone():
+        cursor.execute("""
+            ALTER TABLE attendance_logs
+            ADD COLUMN time_out_entry_method ENUM('scan', 'manual') NOT NULL DEFAULT 'scan' AFTER time_out_scanner_id
+        """)
+
+
 def generate_scanner_code(cursor, length=6):
     """Generate a unique numeric code not already assigned to a scanner."""
     while True:
@@ -129,6 +147,7 @@ def run_startup_migrations():
         ensure_stations_college_column(cursor)
         ensure_scanners_table(cursor)
         ensure_attendance_scanner_columns(cursor)
+        ensure_attendance_entry_method_columns(cursor)
         conn.commit()
     finally:
         cursor.close()
@@ -250,7 +269,7 @@ def import_backup_payload(payload):
         ('stations', ['station_id', 'station_name', 'course_id'], 'station_id'),
         ('events', ['event_id', 'event_name', 'event_date', 'time_in_cutoff', 'time_out_start', 'course_id', 'is_active'], 'event_id'),
         ('scanners', ['scanner_id', 'full_name', 'scan_code', 'is_active', 'created_at'], 'scanner_id'),
-        ('attendance_logs', ['log_id', 'student_id', 'event_id', 'station_id', 'scanner_id', 'time_in', 'time_out', 'time_out_scanner_id', 'status'], 'log_id'),
+        ('attendance_logs', ['log_id', 'student_id', 'event_id', 'station_id', 'scanner_id', 'entry_method', 'time_in', 'time_out', 'time_out_scanner_id', 'time_out_entry_method', 'status'], 'log_id'),
     ]
 
     try:
@@ -431,9 +450,16 @@ def scan(): # Scan function
     if 'scanner_id' not in session:
         return jsonify({'success': False, 'message': 'Scanner not verified. Please re-enter your scanner code.'})
 
-    data       = request.get_json()
-    student_id = data.get('student_id', '').strip()
-    scan_mode  = data.get('scan_mode', 'IN')
+    data          = request.get_json()
+    student_id    = data.get('student_id', '').strip()
+    scan_mode     = data.get('scan_mode', 'IN')
+    # 'scan' = read by the camera, 'manual' = typed in by the scanner-in-charge
+    # when the camera can't read a code. Anything unrecognized falls back to
+    # 'scan' so a malformed/missing value can never masquerade as a manual
+    # override on the record.
+    entry_method  = data.get('entry_method', 'scan')
+    if entry_method not in ('scan', 'manual'):
+        entry_method = 'scan'
 
     if not student_id:
         return jsonify({'success': False, 'message': 'No student ID received'})
@@ -515,16 +541,17 @@ def scan(): # Scan function
                 })
             cursor.execute("""
                 UPDATE attendance_logs
-                SET time_out = %s, time_out_scanner_id = %s
+                SET time_out = %s, time_out_scanner_id = %s, time_out_entry_method = %s
                 WHERE student_id = %s AND event_id = %s
-            """, (current_time, session['scanner_id'], student_id, event['event_id']))
+            """, (current_time, session['scanner_id'], entry_method, student_id, event['event_id']))
             db.commit()
             return jsonify({
                 'success': True,
                 'scan_type': 'OUT',
                 'student_name': student['full_name'],
                 'status': existing['status'],
-                'time': now.strftime('%I:%M %p')
+                'time': now.strftime('%I:%M %p'),
+                'entry_method': entry_method
             })
 
         time_in_cutoff = td_to_str(event['time_in_cutoff'])
@@ -532,11 +559,11 @@ def scan(): # Scan function
 
         cursor.execute("""
             INSERT INTO attendance_logs
-            (student_id, event_id, station_id, scanner_id, time_in, status)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            (student_id, event_id, station_id, scanner_id, entry_method, time_in, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
             student_id, event['event_id'],
-            session['station_id'], session['scanner_id'], current_time, status
+            session['station_id'], session['scanner_id'], entry_method, current_time, status
         ))
         db.commit()
 
@@ -545,7 +572,8 @@ def scan(): # Scan function
             'scan_type': 'IN',
             'student_name': student['full_name'],
             'status': status,
-            'time': now.strftime('%I:%M %p')
+            'time': now.strftime('%I:%M %p'),
+            'entry_method': entry_method
         })
 
     except Exception as e:
@@ -602,7 +630,9 @@ def dashboard():
                e.event_name, e.event_date,
                a.time_in, a.time_out, a.status,
                sc_in.full_name  AS scanned_in_by,
-               sc_out.full_name AS scanned_out_by
+               sc_out.full_name AS scanned_out_by,
+               a.entry_method,
+               a.time_out_entry_method
         FROM attendance_logs a
         JOIN students s   ON a.student_id = s.student_id
         JOIN courses c    ON s.course_id  = c.course_id
@@ -632,7 +662,9 @@ def dashboard_api():
                TIME_FORMAT(a.time_out, '%H:%i:%s') as time_out,
                a.status,
                sc_in.full_name  AS scanned_in_by,
-               sc_out.full_name AS scanned_out_by
+               sc_out.full_name AS scanned_out_by,
+               a.entry_method,
+               a.time_out_entry_method
         FROM attendance_logs a
         JOIN students s   ON a.student_id = s.student_id
         JOIN courses c    ON s.course_id  = c.course_id
@@ -705,7 +737,9 @@ def student_attendance_api():
                    TIME_FORMAT(a.time_out, '%%H:%%i:%%s') AS time_out,
                    CASE WHEN a.log_id IS NULL THEN 'Absent' ELSE a.status END AS status,
                    sc_in.full_name  AS scanned_in_by,
-                   sc_out.full_name AS scanned_out_by
+                   sc_out.full_name AS scanned_out_by,
+                   a.entry_method,
+                   a.time_out_entry_method
             FROM events e
             LEFT JOIN attendance_logs a ON a.event_id = e.event_id AND a.student_id = %s
             LEFT JOIN scanners sc_in  ON a.scanner_id = sc_in.scanner_id
@@ -740,7 +774,9 @@ def absences_api():
                c.course_code, col.college_code,
                CASE WHEN a.log_id IS NULL THEN 'Absent' ELSE 'Present' END as status,
                sc_in.full_name  AS scanned_in_by,
-               sc_out.full_name AS scanned_out_by
+               sc_out.full_name AS scanned_out_by,
+               a.entry_method,
+               a.time_out_entry_method
         FROM students s
         JOIN courses c    ON s.course_id  = c.course_id
         JOIN colleges col ON c.college_id = col.college_id
@@ -1026,7 +1062,10 @@ def scanners():
     cursor = db.cursor()
     cursor.execute("""
         SELECT sc.scanner_id, sc.full_name, sc.scan_code, sc.is_active, sc.created_at,
-               COUNT(a.log_id) AS scans_done
+               COUNT(a.log_id) AS scans_done,
+               SUM(CASE WHEN a.scanner_id = sc.scanner_id AND a.entry_method = 'manual' THEN 1 ELSE 0 END)
+             + SUM(CASE WHEN a.time_out_scanner_id = sc.scanner_id AND a.time_out_entry_method = 'manual' THEN 1 ELSE 0 END)
+               AS manual_entries
         FROM scanners sc
         LEFT JOIN attendance_logs a
                ON a.scanner_id = sc.scanner_id OR a.time_out_scanner_id = sc.scanner_id

@@ -198,6 +198,25 @@
         }
         
 
+        .manual-flag {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 1px 7px;
+            border-radius: 99px;
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            background: rgba(217, 119, 6, 0.15);
+            color: #f59e0b;
+            border: 1px solid #d97706;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        .manual-flag svg { flex-shrink: 0; }
+
         .empty { text-align: center; padding: 48px; color: #475569; font-size: 14px; }
         .hint  { text-align: center; padding: 48px; color: #475569; font-size: 14px; }
     </style>
@@ -564,6 +583,11 @@
                 sel.options[sel.selectedIndex].text;
         }
 
+        function manualFlagHtml(entryMethod) {
+            if (entryMethod !== 'manual') return '';
+            return `<span class="manual-flag" title="Manually entered"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>`;
+        }
+
         function renderAbsenceTable(students, status = '') {
             const body = document.getElementById('absenceBody');
             // Filter students by status if a status filter is selected
@@ -578,7 +602,7 @@
             
             body.innerHTML = filtered.map((s, i) => {
                 const scannedBy = s.status === 'Present'
-                    ? `IN: ${s.scanned_in_by || '—'}${s.scanned_out_by ? ` | OUT: ${s.scanned_out_by}` : ''}`
+                    ? `IN: ${s.scanned_in_by || '—'}${manualFlagHtml(s.entry_method)}${s.scanned_out_by ? ` <br>OUT: ${s.scanned_out_by}${manualFlagHtml(s.time_out_entry_method)}` : ''}`
                     : '—';
                 return `
                 <tr>
@@ -725,7 +749,7 @@
             body.innerHTML = records.map((r, i) => {
                 const attended = r.status === 'Present' || r.status === 'Late';
                 const scannedBy = attended
-                    ? `IN: ${r.scanned_in_by || '—'}${r.scanned_out_by ? ` | OUT: ${r.scanned_out_by}` : ''}`
+                    ? `IN: ${r.scanned_in_by || '—'}${manualFlagHtml(r.entry_method)}${r.scanned_out_by ? ` <br>OUT: ${r.scanned_out_by}${manualFlagHtml(r.time_out_entry_method)}` : ''}`
                     : '—';
                 return `
                     <tr>
