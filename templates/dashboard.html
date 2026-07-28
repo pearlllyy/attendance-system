@@ -173,6 +173,26 @@
             overflow: hidden;
         }
 
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .pagination-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn.disabled {
+            opacity: 0.45;
+            pointer-events: none;
+        }
+
         table { width: 100%; border-collapse: collapse; }
         thead { background: #0f172a; }
 
@@ -350,17 +370,6 @@
                 oninput="filterTable()">
         </div> -->
         <div class="filter-group">
-            <label>Event</label>
-            <select id="filterEvent" onchange="filterTable()">
-                <option value="">All Events</option>
-                {% for event in events %}
-                    <option value="{{ event.event_name }}">
-                        {{ event.event_name }} ({{ event.event_date }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="filter-group">
             <label>College</label>
             <select id="filterCollege" onchange="filterTable()">
                 <option value="">All Colleges</option>
@@ -398,11 +407,11 @@
     <div class="stats">
         <div class="stat-card">
             <div class="label">Expected Scans</div>
-            <div class="value total"><span id="expectedScans">{{ students_total * (events | length) }}</span></div>
+            <div class="value total"><span id="expectedScans">{{ expected_scans }}</span></div>
         </div>
         <div class="stat-card">
             <div class="label">Total Scans</div>
-            <div class="value present"><span id="totalScans">{{ logs | length }}</span><span class="percentage" id="totalScansPercentage">0%</span></div>
+            <div class="value present"><span id="totalScans">{{ total_logs }}</span><span class="percentage" id="totalScansPercentage">0%</span></div>
         </div>
         <!-- <div class="stat-card">
             <div class="label">Present</div>
@@ -412,15 +421,15 @@
         </div> -->
         <div class="stat-card">
             <div class="label">Absents</div>
-            <div class="value late"><span id="absentScans">{{ (students_total * (events | length)) - (logs | length) }}</span><span class="percentage" id="absentPercentage">0%</span></div>
+            <div class="value late"><span id="absentScans">{{ absent_scans }}</span><span class="percentage" id="absentPercentage">0%</span></div>
         </div>
         <div class="college-chart">
         <h2>Scans by College</h2>
-        {% for college in colleges %}
+        {% for college in dashboard_college_stats %}
         <div class="college-bar-row">
             <span class="college-bar-label">{{ college.college_code }}</span>
             <div class="college-bar-track"><div class="college-bar-fill" data-college-bar="{{ college.college_code }}"></div></div>
-            <span class="college-bar-value"><span data-college-stat="{{ college.college_code }}">{{ logs | selectattr('college_code', 'equalto', college.college_code) | list | length }}</span> <span data-college-percentage="{{ college.college_code }}">0%</span></span>
+            <span class="college-bar-value"><span data-college-stat="{{ college.college_code }}">{{ college.scans }}</span> <span data-college-percentage="{{ college.college_code }}">0%</span></span>
         </div>
         {% endfor %}
         </div>
@@ -429,7 +438,7 @@
     <!-- Filters -->
     
     <p id="lastUpdated" style="color:#475569; font-size:12px; margin-bottom:8px;">
-        Last updated: —
+        Active event: {{ active_event.event_name if active_event else 'No active event' }}{% if active_event %} ({{ active_event.event_date }}){% endif %} · Last updated: —
     </p>
 
     <!-- Table -->
@@ -441,10 +450,6 @@
                     <th>Student ID</th>
                     <th>Full Name</th>
                     <th>College</th>
-                    <th>Course</th>
-                    <th>Year</th>
-                    <th>Section</th>
-                    <th>Event</th>
                     <th>Time In</th>
                     <th>Time Out</th>
                     <th>Scanned By</th>
@@ -454,15 +459,11 @@
             <tbody id="tableBody">
                 {% if logs %}
                     {% for log in logs %}
-                    <tr>
+                    <tr data-log-id="{{ log.log_id }}" data-updated-at="{{ log.updated_at_ts }}" data-section="{{ log.section }}" data-year="{{ log.year_level }}">
                         <td>{{ loop.index }}</td>
                         <td>{{ log.student_id }}</td>
                         <td>{{ log.full_name }}</td>
                         <td><span class="badge badge-college">{{ log.college_code }}</span></td>
-                        <td><span class="badge badge-course">{{ log.course_code }}</span></td>
-                        <td>{{ log.year_level }}</td>
-                        <td>{{ log.section }}</td>
-                        <td>{{ log.event_name }}</td>
                         <td>{{ log.time_in }}</td>
                         <td>{{ log.time_out if log.time_out else '—' }}</td>
                         <td style="font-size:12px; color:#94a3b8;">
@@ -476,7 +477,7 @@
                         <td>
                             <button class="btn btn-danger"
                                 style="padding:5px 10px; font-size:12px;"
-                                onclick="deleteLog({{ log.log_id }}, '{{ log.full_name }}')">
+                                onclick="deleteLog({{ log.log_id }}, {{ log.full_name | tojson | forceescape }})">
                                 Delete
                             </button>
                         </td>
@@ -484,11 +485,21 @@
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="12" class="empty">No attendance records yet.</td>
+                        <td colspan="8" class="empty">No attendance records yet.</td>
                     </tr>
                 {% endif %}
             </tbody>
         </table>
+    </div>
+
+    <div class="pagination">
+        <span id="pageSummary">Page {{ current_page }} of {{ page_count }} · {{ page_size }} rows per page</span>
+        <div class="pagination-actions">
+            <a id="prevPageLink" class="btn btn-secondary{{ '' if has_prev else ' disabled' }}"
+                href="{{ url_for('dashboard', page=current_page - 1) if has_prev else '#' }}">Previous</a>
+            <a id="nextPageLink" class="btn btn-secondary{{ '' if has_next else ' disabled' }}"
+                href="{{ url_for('dashboard', page=current_page + 1) if has_next else '#' }}">Next</a>
+        </div>
     </div>
 
     <script src="/static/script.js" defer></script>
@@ -501,131 +512,165 @@
                 setTimeout(() => { btn.textContent = original; }, 1500);
             });
         }
-        const students = {{ students | tojson }};
-        const events = {{ events | tojson }};
+        let currentPage = Number({{ current_page | tojson }}) || 1;
+        let activeEventText = {{ ('Active event: ' ~ active_event.event_name ~ ' (' ~ active_event.event_date ~ ')') | tojson if active_event else 'Active event: No active event' | tojson }};
+        let dashboardRefreshInFlight = false;
 
         function filterTable() {
             const search  = (document.getElementById('search')?.value || '').toLowerCase();
-            const event   = document.getElementById('filterEvent').value.toLowerCase();
             const college = document.getElementById('filterCollege').value.toLowerCase();
             const section = document.getElementById('filterSection').value.toUpperCase();
             const year    = document.getElementById('filterYear').value;
 
-            const visibleRows = [];
-            const matchingScanRows = [];
             document.querySelectorAll('#tableBody tr').forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length < 11) return;
+                if (cells.length < 7) return;
 
-                // # | ID | Name | College | Course | Year | Section | Event | TIn | TOut | Action
+                // # | ID | Name | College | TIn | TOut | Scanned By | Action
                 const matchSearch  = cells[1].textContent.toLowerCase().includes(search) ||
                                      cells[2].textContent.toLowerCase().includes(search);
-                const matchEvent   = event   === '' || cells[7].textContent.toLowerCase().includes(event);
                 const matchCollege = college === '' || cells[3].textContent.toLowerCase().trim().includes(college);
-                const matchSection = section === '' || cells[6].textContent.trim() === section;
-                const matchYear    = year    === '' || cells[5].textContent.trim() === year;
+                const matchSection = section === '' || (row.dataset.section || '').trim().toUpperCase() === section;
+                const matchYear    = year    === '' || String(row.dataset.year || '').trim() === year;
 
-                const matchesAttendanceScope = matchSearch && matchEvent && matchCollege &&
-                                               matchSection && matchYear;
-                const isMatch = matchesAttendanceScope;
+                const isMatch = matchSearch && matchCollege && matchSection && matchYear;
                 row.style.display = isMatch ? '' : 'none';
-                if (isMatch) visibleRows.push(row);
-                if (matchesAttendanceScope) matchingScanRows.push(row);
             });
-            updateStats(visibleRows, matchingScanRows, { search, event, college, section, year });
         }
 
-        function updateStats(rows, matchingScanRows, filters) {
-            const matchingStudents = students.filter(student =>
-                (filters.search === '' || String(student.student_id).toLowerCase().includes(filters.search) ||
-                    String(student.full_name).toLowerCase().includes(filters.search)) &&
-                (filters.college === '' || String(student.college_code).toLowerCase() === filters.college) &&
-                (filters.section === '' || String(student.section).toUpperCase() === filters.section) &&
-                (filters.year === '' || String(student.year_level) === filters.year)
-            );
-            const matchingEvents = filters.event === ''
-                ? events
-                : events.filter(event => event.event_name.toLowerCase().includes(filters.event));
-            const expectedFor = (studentList, eventList) => studentList.reduce((total, student) =>
-                total + eventList.filter(event =>
-                    !event.course_id || String(event.course_id) === String(student.course_id)
-                ).length, 0
-            );
-            const expectedScans = expectedFor(matchingStudents, matchingEvents);
-            const allExpectedScans = expectedFor(students, events);
-            const absentScans = Math.max(0, expectedScans - matchingScanRows.length);
-            const formatPercentage = (value, total) => total ? `${((value / total) * 100).toFixed(1)}%` : '0%';
+        function formatPercentage(value, total) {
+            return total ? `${((value / total) * 100).toFixed(1)}%` : '0%';
+        }
+
+        function updateSummary(payload) {
+            const expectedScans = Number(payload.expected_scans || 0);
+            const totalLogs = Number(payload.total_logs || 0);
+            const absentScans = Number(payload.absent_scans || 0);
 
             document.getElementById('expectedScans').textContent = expectedScans;
-            const expectedPercentage = document.getElementById('expectedPercentage');
-            if (expectedPercentage) expectedPercentage.textContent = formatPercentage(expectedScans, allExpectedScans);
+            document.getElementById('totalScans').textContent = totalLogs;
+            document.getElementById('totalScansPercentage').textContent = formatPercentage(totalLogs, expectedScans);
             document.getElementById('absentScans').textContent = absentScans;
             document.getElementById('absentPercentage').textContent = formatPercentage(absentScans, expectedScans);
-            document.getElementById('totalScans').textContent = rows.length;
-            document.getElementById('totalScansPercentage').textContent = formatPercentage(rows.length, expectedScans);
 
-            document.querySelectorAll('[data-college-stat]').forEach(stat => {
-                const college = stat.dataset.collegeStat.toLowerCase();
-                const collegeScans = rows.filter(row =>
-                    row.cells[3].textContent.trim().toLowerCase() === college
-                ).length;
-                const collegeStudents = matchingStudents.filter(student =>
-                    String(student.college_code).toLowerCase() === college
-                );
-                const collegeExpectedScans = expectedFor(collegeStudents, matchingEvents);
-                const collegePercentage = collegeExpectedScans
-                    ? (collegeScans / collegeExpectedScans) * 100
-                    : 0;
-                stat.textContent = collegeScans;
-                document.querySelector(`[data-college-percentage="${stat.dataset.collegeStat}"]`).textContent =
-                    formatPercentage(collegeScans, collegeExpectedScans);
-                document.querySelector(`[data-college-bar="${stat.dataset.collegeStat}"]`).style.width =
-                    `${Math.min(100, collegePercentage)}%`;
+            (payload.college_stats || []).forEach(college => {
+                const code = String(college.college_code || '');
+                const scans = Number(college.scans || 0);
+                const expected = Number(college.expected || 0);
+                const stat = document.querySelector(`[data-college-stat="${CSS.escape(code)}"]`);
+                const percentage = document.querySelector(`[data-college-percentage="${CSS.escape(code)}"]`);
+                const bar = document.querySelector(`[data-college-bar="${CSS.escape(code)}"]`);
+                if (stat) stat.textContent = scans;
+                if (percentage) percentage.textContent = formatPercentage(scans, expected);
+                if (bar) bar.style.width = `${Math.min(100, expected ? (scans / expected) * 100 : 0)}%`;
             });
         }
 
+        function updatePagination(payload) {
+            currentPage = Number(payload.page || currentPage) || 1;
+            const pageCount = Number(payload.page_count || 1) || 1;
+            const pageSize = Number(payload.page_size || 50) || 50;
+            const previous = document.getElementById('prevPageLink');
+            const next = document.getElementById('nextPageLink');
+
+            document.getElementById('pageSummary').textContent =
+                `Page ${currentPage} of ${pageCount} · ${pageSize} rows per page`;
+
+            previous.href = currentPage > 1 ? `/dashboard?page=${currentPage - 1}` : '#';
+            next.href = currentPage < pageCount ? `/dashboard?page=${currentPage + 1}` : '#';
+            previous.classList.toggle('disabled', currentPage <= 1);
+            next.classList.toggle('disabled', currentPage >= pageCount);
+        }
+
+        function updateActiveEventText(event) {
+            activeEventText = event
+                ? `Active event: ${event.event_name} (${event.event_date})`
+                : 'Active event: No active event';
+        }
+
+        updateSummary({
+            expected_scans: {{ expected_scans | tojson }},
+            total_logs: {{ total_logs | tojson }},
+            absent_scans: {{ absent_scans | tojson }},
+            college_stats: {{ dashboard_college_stats | tojson }}
+        });
         filterTable();
 
-        setInterval(async () => {
-            const res  = await fetch('/api/dashboard');
-            const data = await res.json();
-            if (data.length) refreshTable(data);
-            document.getElementById('lastUpdated').textContent =
-                `Last updated: ${new Date().toLocaleTimeString()}`;
-        }, 5000);
+        setInterval(refreshDashboardPage, 10000);
 
         function manualFlagHtml(entryMethod) {
             if (entryMethod !== 'manual') return '';
             return `<span class="manual-flag" title="Manually entered"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>`;
         }
 
-        function refreshTable(logs) {
-            document.getElementById('tableBody').innerHTML = logs.map((log, i) => `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td>${log.student_id}</td>
-                    <td>${log.full_name}</td>
-                    <td><span class="badge badge-college">${log.college_code}</span></td>
-                    <td><span class="badge badge-course">${log.course_code}</span></td>
-                    <td>${log.year_level}</td>
-                    <td>${log.section}</td>
-                    <td>${log.event_name}</td>
-                    <td>${log.time_in || '—'}</td>
-                    <td>${log.time_out || '—'}</td>
+        function escapeAttr(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('"', '&quot;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;');
+        }
+
+        function escapeHtml(value) {
+            return escapeAttr(value).replaceAll("'", '&#39;');
+        }
+
+        function rowHtml(log) {
+            const studentName = String(log.full_name ?? '');
+            return `
+                <tr data-log-id="${escapeAttr(log.log_id)}" data-updated-at="${escapeAttr(log.updated_at_ts || 0)}" data-section="${escapeAttr(log.section)}" data-year="${escapeAttr(log.year_level)}">
+                    <td></td>
+                    <td>${escapeHtml(log.student_id)}</td>
+                    <td>${escapeHtml(studentName)}</td>
+                    <td><span class="badge badge-college">${escapeHtml(log.college_code)}</span></td>
+                    <td>${escapeHtml(log.time_in || '—')}</td>
+                    <td>${escapeHtml(log.time_out || '—')}</td>
                     <td style="font-size:12px; color:#94a3b8;">
-                        IN: ${log.scanned_in_by || '—'}${manualFlagHtml(log.entry_method)}
-                        ${log.time_out ? `<br>OUT: ${log.scanned_out_by || '—'}${manualFlagHtml(log.time_out_entry_method)}` : ''}
+                        IN: ${escapeHtml(log.scanned_in_by || '—')}${manualFlagHtml(log.entry_method)}
+                        ${log.time_out ? `<br>OUT: ${escapeHtml(log.scanned_out_by || '—')}${manualFlagHtml(log.time_out_entry_method)}` : ''}
                     </td>
                     <td>
                         <button class="btn btn-danger"
                             style="padding:5px 10px; font-size:12px;"
-                            onclick="deleteLog(${log.log_id}, '${log.full_name}')">
+                            onclick="deleteLog(${Number(log.log_id)}, ${escapeAttr(JSON.stringify(studentName))})">
                             Delete
                         </button>
                     </td>
                 </tr>
-            `).join('');
+            `;
+        }
+
+        function renumberRows() {
+            document.querySelectorAll('#tableBody tr[data-log-id]').forEach((row, i) => {
+                row.cells[0].textContent = i + 1;
+            });
+        }
+
+        function renderDashboardRows(logs) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = logs.length
+                ? logs.map(rowHtml).join('')
+                : '<tr><td colspan="8" class="empty">No attendance records yet.</td></tr>';
+            renumberRows();
             filterTable();
+        }
+
+        async function refreshDashboardPage() {
+            if (dashboardRefreshInFlight) return;
+            dashboardRefreshInFlight = true;
+            try {
+                const res = await fetch(`/api/dashboard?page=${encodeURIComponent(currentPage)}`);
+                const payload = await res.json();
+                const logs = Array.isArray(payload) ? payload : (payload.logs || []);
+                renderDashboardRows(logs);
+                updateSummary(payload);
+                updatePagination(payload);
+                updateActiveEventText(payload.active_event);
+                document.getElementById('lastUpdated').textContent =
+                    `${activeEventText} · Last updated: ${new Date().toLocaleTimeString()}`;
+            } finally {
+                dashboardRefreshInFlight = false;
+            }
         }
 
         async function deleteLog(logId, studentName) {

@@ -144,6 +144,7 @@ CREATE TABLE attendance_logs (
     time_in    TIME        DEFAULT NULL,
     time_out   TIME        DEFAULT NULL,
     status     ENUM('Present', 'Late', 'Absent') NOT NULL DEFAULT 'Present',
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     FOREIGN KEY (student_id) REFERENCES students(student_id),
     FOREIGN KEY (event_id)   REFERENCES events(event_id),
     FOREIGN KEY (station_id) REFERENCES stations(station_id)
@@ -152,7 +153,9 @@ CREATE TABLE attendance_logs (
 -- ─── Indexes ──────────────────────────────────────────────
 ALTER TABLE students       ADD INDEX (course_id);
 ALTER TABLE courses        ADD INDEX (college_id);
-ALTER TABLE attendance_logs ADD INDEX (student_id, event_id);
+ALTER TABLE attendance_logs ADD UNIQUE KEY uq_attendance_student_event (student_id, event_id);
+ALTER TABLE attendance_logs ADD INDEX idx_attendance_updated_at (updated_at);
+ALTER TABLE attendance_logs ADD INDEX idx_attendance_event_log (event_id, log_id);
 ALTER TABLE events         ADD INDEX (is_active);
 ALTER TABLE events         ADD INDEX (course_id);
 

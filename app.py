@@ -48,16 +48,22 @@ def get_lan_ips():
 # back-to-back scans across stations.
 db_pool = PooledDB(
     creator=pymysql,
-    mincached=2,          # connections kept open even when idle
-    maxcached=8,          # max idle connections kept in the pool
-    maxconnections=20,    # hard cap on total connections
-    blocking=True,        # wait for a free connection instead of erroring
-    ping=1,                # ping/reconnect stale connections before reuse
+    mincached=app.config['DB_POOL_MINCACHED'],
+    maxcached=app.config['DB_POOL_MAXCACHED'],
+    maxconnections=app.config['DB_POOL_MAXCONNECTIONS'],
+    maxusage=app.config['DB_POOL_MAXUSAGE'],
+    blocking=True,
+    ping=1,
     host=app.config['MYSQL_HOST'],
     user=app.config['MYSQL_USER'],
     password=app.config['MYSQL_PASSWORD'],
     db=app.config['MYSQL_DB'],
     port=app.config['MYSQL_PORT'],
+    connect_timeout=app.config['DB_POOL_CONNECT_TIMEOUT'],
+    read_timeout=app.config['DB_POOL_READ_TIMEOUT'],
+    write_timeout=app.config['DB_POOL_WRITE_TIMEOUT'],
+    charset='utf8mb4',
+    autocommit=False,
     cursorclass=pymysql.cursors.DictCursor
 )
 
@@ -128,6 +134,59 @@ def ensure_attendance_entry_method_columns(cursor):
         """)
 
 
+def ensure_attendance_updated_at_column(cursor):
+    cursor.execute("SHOW COLUMNS FROM attendance_logs LIKE 'updated_at'")
+    column = cursor.fetchone()
+    if not column:
+        cursor.execute("""
+            ALTER TABLE attendance_logs
+            ADD COLUMN updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+            ON UPDATE CURRENT_TIMESTAMP(6) AFTER status
+        """)
+    elif 'timestamp(6)' not in column.get('Type', '').lower():
+        cursor.execute("""
+            ALTER TABLE attendance_logs
+            MODIFY COLUMN updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+            ON UPDATE CURRENT_TIMESTAMP(6)
+        """)
+
+    cursor.execute("SHOW INDEX FROM attendance_logs WHERE Key_name = 'idx_attendance_updated_at'")
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE attendance_logs ADD INDEX idx_attendance_updated_at (updated_at)")
+
+
+def ensure_attendance_unique_student_event(cursor):
+    cursor.execute("SHOW INDEX FROM attendance_logs WHERE Key_name = 'uq_attendance_student_event'")
+    if cursor.fetchone():
+        return
+
+    cursor.execute("""
+        SELECT student_id, event_id, COUNT(*) AS duplicate_count
+        FROM attendance_logs
+        GROUP BY student_id, event_id
+        HAVING duplicate_count > 1
+        LIMIT 1
+    """)
+    duplicate = cursor.fetchone()
+    if duplicate:
+        raise RuntimeError(
+            "Cannot add unique attendance constraint because duplicate "
+            f"records exist for student_id={duplicate['student_id']} "
+            f"and event_id={duplicate['event_id']}."
+        )
+
+    cursor.execute("""
+        ALTER TABLE attendance_logs
+        ADD UNIQUE KEY uq_attendance_student_event (student_id, event_id)
+    """)
+
+
+def ensure_attendance_event_log_index(cursor):
+    cursor.execute("SHOW INDEX FROM attendance_logs WHERE Key_name = 'idx_attendance_event_log'")
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE attendance_logs ADD INDEX idx_attendance_event_log (event_id, log_id)")
+
+
 def generate_scanner_code(cursor, length=6):
     """Generate a unique numeric code not already assigned to a scanner."""
     while True:
@@ -148,6 +207,9 @@ def run_startup_migrations():
         ensure_scanners_table(cursor)
         ensure_attendance_scanner_columns(cursor)
         ensure_attendance_entry_method_columns(cursor)
+        ensure_attendance_updated_at_column(cursor)
+        ensure_attendance_unique_student_event(cursor)
+        ensure_attendance_event_log_index(cursor)
         conn.commit()
     finally:
         cursor.close()
@@ -576,6 +638,11 @@ def scan(): # Scan function
             'entry_method': entry_method
         })
 
+    except pymysql.err.IntegrityError as e:
+        db.rollback()
+        if e.args and e.args[0] == 1062:
+            return jsonify({'success': False, 'message': 'Student already scanned for this event'})
+        return jsonify({'success': False, 'message': str(e)})
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)})
@@ -605,34 +672,45 @@ def get_stations():
     return jsonify(stations)
 
 # ─── Admin Routes (login required) ────────────────────────────────
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT event_id, event_name, event_date, course_id FROM events ORDER BY event_date DESC")
-    events = cursor.fetchall()
-    cursor.execute("SELECT * FROM colleges ORDER BY college_code")
-    colleges = cursor.fetchall()
-    cursor.execute("SELECT COUNT(*) AS total FROM students")
-    students_total = cursor.fetchone()['total']
+DASHBOARD_PAGE_SIZE = 50
+
+
+def parse_positive_int(value, default=1):
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+def fetch_active_event(cursor):
     cursor.execute("""
-        SELECT s.student_id, s.full_name, s.course_id, s.section, s.year_level,
-               c.course_code, col.college_code
-        FROM students s
-        JOIN courses c    ON s.course_id = c.course_id
-        JOIN colleges col ON c.college_id = col.college_id
+        SELECT event_id, event_name, event_date, course_id
+        FROM events
+        WHERE is_active = 1
+        ORDER BY event_id DESC
+        LIMIT 1
     """)
-    students = cursor.fetchall()
-    cursor.execute("""
+    return cursor.fetchone()
+
+
+def fetch_dashboard_logs(cursor, event_id, page=1, limit=DASHBOARD_PAGE_SIZE):
+    if not event_id:
+        return []
+
+    offset = (page - 1) * limit
+    query = """
         SELECT a.log_id, s.full_name, s.student_id, s.section, s.year_level,
-               c.course_code, col.college_code,
-               e.event_name, e.event_date,
-               a.time_in, a.time_out, a.status,
+               col.college_code,
+               e.event_name,
+               TIME_FORMAT(a.time_in,  '%%H:%%i:%%s') as time_in,
+               TIME_FORMAT(a.time_out, '%%H:%%i:%%s') as time_out,
+               a.status,
                sc_in.full_name  AS scanned_in_by,
                sc_out.full_name AS scanned_out_by,
                a.entry_method,
-               a.time_out_entry_method
+               a.time_out_entry_method,
+               CAST(UNIX_TIMESTAMP(a.updated_at) AS DECIMAL(16, 6)) AS updated_at_ts
         FROM attendance_logs a
         JOIN students s   ON a.student_id = s.student_id
         JOIN courses c    ON s.course_id  = c.course_id
@@ -640,44 +718,136 @@ def dashboard():
         JOIN events e     ON a.event_id   = e.event_id
         LEFT JOIN scanners sc_in  ON a.scanner_id = sc_in.scanner_id
         LEFT JOIN scanners sc_out ON a.time_out_scanner_id = sc_out.scanner_id
-        ORDER BY e.event_date DESC, a.time_in DESC
-    """)
-    logs = cursor.fetchall()
+        WHERE a.event_id = %s
+        ORDER BY a.log_id DESC
+        LIMIT %s OFFSET %s
+    """
+    cursor.execute(query, (event_id, limit, offset))
+    return cursor.fetchall()
+
+
+def fetch_dashboard_summary(cursor, active_event, colleges):
+    college_stats = {
+        college['college_code']: {'college_code': college['college_code'], 'expected': 0, 'scans': 0}
+        for college in colleges
+    }
+    summary = {
+        'expected_scans': 0,
+        'total_logs': 0,
+        'absent_scans': 0,
+        'college_stats': list(college_stats.values()),
+    }
+
+    if not active_event:
+        return summary
+
+    student_where = ""
+    student_params = []
+    if active_event.get('course_id'):
+        student_where = "WHERE s.course_id = %s"
+        student_params.append(active_event['course_id'])
+
+    cursor.execute(f"""
+        SELECT col.college_code, COUNT(*) AS expected
+        FROM students s
+        JOIN courses c    ON s.course_id = c.course_id
+        JOIN colleges col ON c.college_id = col.college_id
+        {student_where}
+        GROUP BY col.college_code
+    """, student_params)
+    for row in cursor.fetchall():
+        if row['college_code'] in college_stats:
+            college_stats[row['college_code']]['expected'] = row['expected']
+
+    cursor.execute("""
+        SELECT col.college_code, COUNT(a.log_id) AS scans
+        FROM attendance_logs a
+        JOIN students s   ON a.student_id = s.student_id
+        JOIN courses c    ON s.course_id = c.course_id
+        JOIN colleges col ON c.college_id = col.college_id
+        WHERE a.event_id = %s
+        GROUP BY col.college_code
+    """, (active_event['event_id'],))
+    for row in cursor.fetchall():
+        if row['college_code'] in college_stats:
+            college_stats[row['college_code']]['scans'] = row['scans']
+
+    summary['expected_scans'] = sum(row['expected'] for row in college_stats.values())
+    summary['total_logs'] = sum(row['scans'] for row in college_stats.values())
+    summary['absent_scans'] = max(0, summary['expected_scans'] - summary['total_logs'])
+    summary['college_stats'] = list(college_stats.values())
+    return summary
+
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    page = parse_positive_int(request.args.get('page'), 1)
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM colleges ORDER BY college_code")
+    colleges = cursor.fetchall()
+    active_event = fetch_active_event(cursor)
+    summary = fetch_dashboard_summary(cursor, active_event, colleges)
+    page_count = max(1, (summary['total_logs'] + DASHBOARD_PAGE_SIZE - 1) // DASHBOARD_PAGE_SIZE)
+    if page > page_count:
+        page = page_count
+    logs = fetch_dashboard_logs(
+        cursor,
+        active_event['event_id'] if active_event else None,
+        page=page,
+        limit=DASHBOARD_PAGE_SIZE,
+    )
     cursor.close()
     db.close()
-    return render_template('dashboard.html', logs=logs, events=events, colleges=colleges,
-                           students_total=students_total, students=students,
+    return render_template('dashboard.html', logs=logs, active_event=active_event, colleges=colleges,
+                           expected_scans=summary['expected_scans'],
+                           total_logs=summary['total_logs'],
+                           absent_scans=summary['absent_scans'],
+                           dashboard_college_stats=summary['college_stats'],
+                           current_page=page,
+                           page_count=page_count,
+                           page_size=DASHBOARD_PAGE_SIZE,
+                           has_prev=page > 1,
+                           has_next=page < page_count,
                            lan_ips=get_lan_ips())
 
 @app.route('/api/dashboard')
 @login_required
 def dashboard_api():
+    page = parse_positive_int(request.args.get('page'), 1)
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("""
-        SELECT a.log_id, s.full_name, s.student_id, s.section, s.year_level,
-               c.course_code, col.college_code,
-               e.event_name, e.event_date,
-               TIME_FORMAT(a.time_in,  '%H:%i:%s') as time_in,
-               TIME_FORMAT(a.time_out, '%H:%i:%s') as time_out,
-               a.status,
-               sc_in.full_name  AS scanned_in_by,
-               sc_out.full_name AS scanned_out_by,
-               a.entry_method,
-               a.time_out_entry_method
-        FROM attendance_logs a
-        JOIN students s   ON a.student_id = s.student_id
-        JOIN courses c    ON s.course_id  = c.course_id
-        JOIN colleges col ON c.college_id = col.college_id
-        JOIN events e     ON a.event_id   = e.event_id
-        LEFT JOIN scanners sc_in  ON a.scanner_id = sc_in.scanner_id
-        LEFT JOIN scanners sc_out ON a.time_out_scanner_id = sc_out.scanner_id
-        ORDER BY e.event_date DESC, a.time_in DESC
-    """)
-    logs = cursor.fetchall()
-    cursor.close()
-    db.close()
-    return jsonify(logs)
+    try:
+        cursor.execute("SELECT * FROM colleges ORDER BY college_code")
+        colleges = cursor.fetchall()
+        active_event = fetch_active_event(cursor)
+        summary = fetch_dashboard_summary(cursor, active_event, colleges)
+        page_count = max(1, (summary['total_logs'] + DASHBOARD_PAGE_SIZE - 1) // DASHBOARD_PAGE_SIZE)
+        if page > page_count:
+            page = page_count
+        logs = fetch_dashboard_logs(
+            cursor,
+            active_event['event_id'] if active_event else None,
+            page=page,
+            limit=DASHBOARD_PAGE_SIZE,
+        )
+        return jsonify({
+            'logs': logs,
+            'active_event': active_event,
+            'expected_scans': summary['expected_scans'],
+            'total_logs': summary['total_logs'],
+            'absent_scans': summary['absent_scans'],
+            'college_stats': summary['college_stats'],
+            'page': page,
+            'page_count': page_count,
+            'page_size': DASHBOARD_PAGE_SIZE,
+            'has_prev': page > 1,
+            'has_next': page < page_count,
+        })
+    finally:
+        cursor.close()
+        db.close()
 
 @app.route('/absences')
 @login_required
