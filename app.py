@@ -1521,7 +1521,8 @@ def import_students():
         inserted = 0
         skipped  = 0
         errors   = []
-        for row in reader:
+
+        for i, row in enumerate(reader, start=1):
             try:
                 cursor.execute("""
                     INSERT INTO students
@@ -1534,11 +1535,13 @@ def import_students():
                     int(row['year_level'].strip()),
                     row['section'].strip().upper()
                 ))
+                db.commit()
                 inserted += 1
             except Exception as e:
+                db.rollback()
                 skipped += 1
-                errors.append(f"Row {inserted + skipped}: {str(e)}")
-        db.commit()
+                errors.append(f"Row {i}: {str(e)}")
+                continue
         return jsonify({'success': True, 'inserted': inserted,
                         'skipped': skipped, 'errors': errors})
     except Exception as e:
