@@ -71,6 +71,19 @@ db_pool = PooledDB(
 def get_db():
     return db_pool.connection()
 
+def get_direct_db():
+    """Dedicated connection for long transactions (no pool recycling)."""
+    return pymysql.connect(
+        host=app.config['MYSQL_HOST'],
+        user=app.config['MYSQL_USER'],
+        password=app.config['MYSQL_PASSWORD'],
+        db=app.config['MYSQL_DB'],
+        port=app.config['MYSQL_PORT'],
+        charset='utf8mb4',
+        autocommit=False,
+        cursorclass=pymysql.cursors.DictCursor,
+    )
+
 def ensure_events_course_column(cursor):
     cursor.execute("SHOW COLUMNS FROM events LIKE 'course_id'")
     if not cursor.fetchone():
@@ -321,14 +334,14 @@ def build_backup_payload():
 
 
 def import_backup_payload(payload):
-    db = get_db()
+    db = get_direct_db()
     cursor = db.cursor()
 
     table_specs = [
         ('colleges', ['college_id', 'college_code', 'college_name'], 'college_id'),
         ('courses', ['course_id', 'course_code', 'course_name', 'major', 'college_id'], 'course_id'),
         ('students', ['student_id', 'full_name', 'course_id', 'year_level', 'section'], 'student_id'),
-        ('stations', ['station_id', 'station_name', 'course_id'], 'station_id'),
+        ('stations', ['station_id', 'station_name', 'college_id', 'course_id'], 'station_id'),
         ('events', ['event_id', 'event_name', 'event_date', 'time_in_cutoff', 'time_out_start', 'course_id', 'is_active'], 'event_id'),
         ('scanners', ['scanner_id', 'full_name', 'scan_code', 'is_active', 'created_at'], 'scanner_id'),
         ('attendance_logs', ['log_id', 'student_id', 'event_id', 'station_id', 'scanner_id', 'entry_method', 'time_in', 'time_out', 'time_out_scanner_id', 'time_out_entry_method', 'status'], 'log_id'),
